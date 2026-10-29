@@ -11,6 +11,11 @@ YouTube app) in GeckoView, Firefox's browser engine for Android.
   playback and the media notification. Starting playback in one tab pauses the other. Links to
   the other site open in its tab; Back on the Music tab's first page returns to YouTube.
   Long-press the app icon for a *Music* shortcut.
+- Crossfade on the Music tab for non-stop playback: a few seconds before a song ends, the next
+  song in the queue starts in a hidden second YouTube Music player and the two are faded across
+  each other; YouTube Music then moves on to that song and takes over from the hidden player.
+  Length (3-12 seconds) or off in App settings. Falls back to a plain fade if the second
+  player isn't ready; seeking back, skipping, ads and repeat-one cancel it.
 - **App settings** (long-press the app icon → *Extensions & settings*, or the
   *App settings* button on YouTube's *You* page; it also opens on first launch):
   - install, update, turn on/off, remove and configure uBlock Origin, SponsorBlock,

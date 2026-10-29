@@ -156,8 +156,11 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                     return GeckoResult.fromValue(true);
                 case "getPrefs":
                     try {
-                        return GeckoResult.fromValue(new JSONObject().put("highestQuality",
-                                Extensions.prefs(GeckoApp.this).getBoolean(Extensions.PREF_HIGHEST_QUALITY, true)));
+                        return GeckoResult.fromValue(new JSONObject()
+                                .put("highestQuality", Extensions.prefs(GeckoApp.this)
+                                        .getBoolean(Extensions.PREF_HIGHEST_QUALITY, true))
+                                .put("crossfadeSeconds", Extensions.prefs(GeckoApp.this)
+                                        .getInt(Extensions.PREF_CROSSFADE, Extensions.CROSSFADE_DEFAULT)));
                     } catch (org.json.JSONException e) {
                         return null;
                     }

@@ -137,6 +137,7 @@ public class SettingsActivity extends Activity {
         mList.addView(toggle("Highest video quality",
                 "Always start videos at the best quality available, instead of the size the player picks.",
                 Extensions.PREF_HIGHEST_QUALITY));
+        mList.addView(crossfadeRow());
         mList.addView(toggle("Background playback",
                 "Keep playing with the screen off or in other apps, with play/pause and skip controls "
                         + "in a notification.",
@@ -279,6 +280,49 @@ public class SettingsActivity extends Activity {
         } catch (Exception e) {
             openAutofillSettings();
         }
+    }
+
+    private static final int[] CROSSFADE_CHOICES = {0, 3, 6, 9, 12};
+
+    private static String crossfadeLabel(int seconds) {
+        return seconds == 0 ? "Off" : seconds + " seconds";
+    }
+
+    /** YouTube Music crossfade length; tapping opens a list of choices. */
+    private View crossfadeRow() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(0, dp(6), 0, dp(6));
+        int current = Extensions.prefs(this).getInt(Extensions.PREF_CROSSFADE, Extensions.CROSSFADE_DEFAULT);
+        TextView title = new TextView(this);
+        title.setText("Crossfade (Music tab): " + crossfadeLabel(current));
+        title.setTextColor(TEXT);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        box.addView(title);
+        TextView t = body("Non-stop playback: the next song starts and fades in while the current one "
+                + "fades out, without the usual pause between tracks.");
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        box.addView(t);
+        box.setOnClickListener(v -> {
+            String[] labels = new String[CROSSFADE_CHOICES.length];
+            int checked = 0;
+            for (int i = 0; i < labels.length; i++) {
+                labels[i] = crossfadeLabel(CROSSFADE_CHOICES[i]);
+                if (CROSSFADE_CHOICES[i] == current) {
+                    checked = i;
+                }
+            }
+            new android.app.AlertDialog.Builder(this, android.app.AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                    .setTitle("Crossfade")
+                    .setSingleChoiceItems(labels, checked, (d, which) -> {
+                        Extensions.prefs(this).edit().putInt(Extensions.PREF_CROSSFADE, CROSSFADE_CHOICES[which]).apply();
+                        d.dismiss();
+                        toast("Crossfade: " + labels[which] + ". Applies to songs started after this.");
+                        refresh();
+                    })
+                    .show();
+        });
+        return box;
     }
 
     private View toggle(String title, String summary, String pref) {

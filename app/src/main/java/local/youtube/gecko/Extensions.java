@@ -62,6 +62,9 @@ final class Extensions {
     static final String PREF_ONBOARDED = "onboarded";
     static final String PREF_BACKGROUND_PLAY = "background_play";
     static final String PREF_HIGHEST_QUALITY = "highest_quality";
+    /** Crossfade length on YouTube Music, in seconds; 0 is off. */
+    static final String PREF_CROSSFADE = "crossfade_seconds";
+    static final int CROSSFADE_DEFAULT = 6;
     private static final long UPDATE_INTERVAL_MS = 24L * 60 * 60 * 1000;
 
     private Extensions() {
