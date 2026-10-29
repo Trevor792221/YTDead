@@ -55,8 +55,14 @@ passkey bridge, ad removal, the settings button, background play and banner hidi
 
 ## Install
 
-Download the APK from [Releases](../../releases), open it on your phone and allow
-"Install unknown apps" when Android asks.
+Download an APK from [Releases](../../releases), open it on your phone or TV and allow
+"Install unknown apps" when Android asks:
+
+- `YTDead-<version>-arm64.apk`: most phones and tablets, and newer TVs
+- `YTDead-<version>-arm32.apk`: 32-bit Android, which includes most Android TV devices
+  (Chromecast with Google TV, Fire TV, Mi Box) and older phones
+
+If one says the app isn't compatible with your device, use the other.
 
 ## Build
 
@@ -64,7 +70,8 @@ Needs JDK 17+ and the Android SDK (platform `android-37.2`, build tools 37).
 
 ```sh
 ./gradlew assembleRelease
-# -> app/build/outputs/apk/release/app-release.apk
+# -> app/build/outputs/apk/arm64/release/app-arm64-release.apk
+#    app/build/outputs/apk/arm32/release/app-arm32-release.apk
 ```
 
 ### Signing
@@ -88,5 +95,5 @@ a copy signed with the release key. Keep the key safe: every update must be sign
 publishes a GitHub Release with the signed APK, once these repository secrets are set:
 `KEYSTORE_BASE64` (`base64 -w0 release.jks`), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
-Only `arm64-v8a` is built. For older 32-bit phones change the GeckoView dependency in
-`app/build.gradle` to `geckoview-armeabi-v7a`.
+Two APKs are built, one per processor type (`arm64-v8a` and `armeabi-v7a`), because GeckoView
+ships a separate engine build for each.
