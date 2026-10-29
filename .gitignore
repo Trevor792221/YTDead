@@ -1,0 +1,9 @@
+build/
+.gradle/
+local.properties
+*.apk
+*.aab
+# Signing key and its passwords: keep these out of git.
+*.jks
+*.keystore
+keystore.properties

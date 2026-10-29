@@ -1,0 +1,50 @@
+/* "Open the app" / "Get YouTube Premium" banners and promos. */
+ytm-mealbar-promo-renderer,
+.mealbar-promo-renderer,
+ytm-statement-banner-renderer,
+ytm-promoted-sparkles-web-renderer,
+ytm-companion-ad-renderer,
+ad-slot-renderer {
+  display: none !important;
+}
+
+/* No scrollbars, like the native app. */
+html {
+  scrollbar-width: none !important;
+}
+
+#ytgecko-settings {
+  position: fixed;
+  right: 12px;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  z-index: 2147483647;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 20px;
+  background: #272727;
+  color: #f1f1f1;
+  font: 500 14px/1 Roboto, Arial, sans-serif;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Ad boxes that slip through (uBlock Origin and EasyList hide the same ones). */
+ad-slot-renderer,
+lazy-list > ad-slot-renderer,
+ytm-rich-item-renderer:has(> ad-slot-renderer),
+ytm-item-section-renderer:has(> lazy-list > ad-slot-renderer:only-child),
+ytm-companion-slot,
+ytm-companion-ad-renderer,
+ytm-promoted-video-renderer,
+ytm-promoted-sparkles-text-search-renderer,
+ytm-display-ad-renderer,
+ytm-in-feed-ad-layout-renderer,
+ytm-brand-video-singleton-renderer,
+ytm-merch-shelf-renderer,
+ytm-reel-item-renderer:has(ad-slot-renderer),
+yt-overlay-product-sticker,
+.ytp-ad-overlay-container,
+.ytp-ad-image-overlay,
+.ytp-ad-text-overlay,
+.ytp-suggested-action-badge {
+  display: none !important;
+}
