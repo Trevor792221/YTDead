@@ -52,6 +52,9 @@ public class ExtensionPageActivity extends Activity {
             }
         });
         mSession.open(GeckoApp.get().runtime());
+        // Not a tab of its own: extensions acting on "the current tab" (uBlock Origin's pop-up,
+        // Bitwarden) should act on the YouTube or Music page behind it.
+        GeckoApp.get().runtime().getWebExtensionController().setTabActive(mSession, false);
         mView.setSession(mSession);
         mSession.loadUri(url);
 

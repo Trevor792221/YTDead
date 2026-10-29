@@ -21,12 +21,18 @@ final class Extensions {
         final String slug;
         final String name;
         final String summary;
+        /** The extension's toolbar pop-up page, shown full screen by "Open"; null if none. */
+        final String popupPath;
+        /** Included in "Install all". */
+        final boolean recommended;
 
-        Info(String id, String slug, String name, String summary) {
+        Info(String id, String slug, String name, String summary, String popupPath, boolean recommended) {
             this.id = id;
             this.slug = slug;
             this.name = name;
             this.summary = summary;
+            this.popupPath = popupPath;
+            this.recommended = recommended;
         }
 
         String downloadUrl() {
@@ -36,11 +42,18 @@ final class Extensions {
 
     static final Info[] CATALOG = {
         new Info("uBlock0@raymondhill.net", "ublock-origin", "uBlock Origin",
-                "Blocks ads, trackers and pop-ups."),
+                "Blocks ads, trackers and pop-ups. Open shows what it blocked on the current page.",
+                "popup-fenix.html", true),
         new Info("sponsorBlocker@ajay.app", "sponsorblock", "SponsorBlock",
-                "Skips sponsor segments, intros, outros and other parts of videos marked by viewers."),
+                "Skips sponsor segments, intros, outros and other parts of videos marked by viewers.",
+                "popup.html", true),
         new Info("{762f9885-5a13-4abd-9c77-433dcd38b8fd}", "return-youtube-dislikes",
-                "Return YouTube Dislike", "Shows dislike counts again."),
+                "Return YouTube Dislike", "Shows dislike counts again.", "popup.html", true),
+        new Info("{446900e4-71c2-419f-a6a7-df9c091e268b}", "bitwarden-password-manager",
+                "Bitwarden", "Fills passwords from your Bitwarden vault. Use Open to sign in to Bitwarden. "
+                        + "Made for desktop Firefox, so some features may not work here; the Bitwarden "
+                        + "Android app also fills sign-in forms in YTDead.",
+                "popup/index.html", false),
     };
 
     static final String PREFS = "settings";

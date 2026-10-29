@@ -167,9 +167,11 @@ public class MainActivity extends Activity {
                 mView.releaseSession();
                 // Hidden tabs keep playing audio, like background tabs in Firefox.
                 shown.setActive(false);
+                GeckoApp.get().runtime().getWebExtensionController().setTabActive(shown, false);
             }
             mView.setSession(session);
             session.setActive(true);
+            GeckoApp.get().runtime().getWebExtensionController().setTabActive(session, true);
         }
         mTab = tab;
         updateTabBar();

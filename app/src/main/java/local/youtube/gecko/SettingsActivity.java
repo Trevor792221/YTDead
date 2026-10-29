@@ -107,7 +107,7 @@ public class SettingsActivity extends Activity {
         boolean anyMissing = false;
         for (Extensions.Info info : Extensions.CATALOG) {
             WebExtension ext = byId.get(info.id);
-            anyMissing |= ext == null;
+            anyMissing |= ext == null && info.recommended;
             mList.addView(extensionCard(info, ext));
         }
 
@@ -115,7 +115,7 @@ public class SettingsActivity extends Activity {
         if (anyMissing) {
             row.addView(button("Install all", true, v -> {
                 for (Extensions.Info info : Extensions.CATALOG) {
-                    if (byId.get(info.id) == null) {
+                    if (byId.get(info.id) == null && info.recommended) {
                         install(info);
                     }
                 }
@@ -199,6 +199,12 @@ public class SettingsActivity extends Activity {
                 row.addView(button("Install", true, v -> install(info)));
             } else {
                 WebExtensionController c = Extensions.controller();
+                String base = ext.metaData.baseUrl;
+                String popupUrl = info.popupPath != null && base != null
+                        ? (base.endsWith("/") ? base : base + "/") + info.popupPath : null;
+                if (popupUrl != null && ext.metaData.enabled && !popupUrl.equals(ext.metaData.optionsPageUrl)) {
+                    row.addView(button("Open", true, v -> Extensions.openPage(popupUrl, info.name)));
+                }
                 if (ext.metaData.optionsPageUrl != null && ext.metaData.enabled) {
                     row.addView(button("Settings", true,
                             v -> Extensions.openPage(ext.metaData.optionsPageUrl, info.name)));

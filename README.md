@@ -13,8 +13,10 @@ YouTube app) in GeckoView, Firefox's browser engine for Android.
   Long-press the app icon for a *Music* shortcut.
 - **App settings** (long-press the app icon → *Extensions & settings*, or the
   *App settings* button on YouTube's *You* page; it also opens on first launch):
-  - install, update, turn on/off, remove and configure uBlock Origin, SponsorBlock and
-    Return YouTube Dislike, downloaded from addons.mozilla.org
+  - install, update, turn on/off, remove and configure uBlock Origin, SponsorBlock,
+    Return YouTube Dislike and (optionally) Bitwarden, downloaded from addons.mozilla.org;
+    *Open* shows an extension's pop-up full screen (uBlock Origin's per-page controls, the
+    Bitwarden vault)
   - optional daily automatic updates
   - shortcuts to Android's autofill service and passkey provider settings
 - Password managers: sign-in forms are exposed to Android's autofill framework.
