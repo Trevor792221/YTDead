@@ -29,7 +29,10 @@ YouTube app) in GeckoView, Firefox's browser engine for Android.
 - Background playback with a media notification: play/pause, previous/next (or back/forward
   10 seconds when there is no next video), a seek bar, lock-screen controls, headset buttons,
   and pausing when headphones are unplugged or a call comes in. Can be turned off in App settings.
-- Full-screen videos go landscape; Home during a full-screen video switches to
+- Swipe down on the player to pop the video out into a small floating window
+  (picture-in-picture) that stays on top of other apps. Expanding it returns to the watch
+  page; closing it stops the video. Can be turned off in App settings.
+- Full-screen videos go landscape; Home during a full-screen video also switches to
   picture-in-picture.
 - YouTube links (and *Share → YouTube*) can open in the app. Other links open in your browser.
 

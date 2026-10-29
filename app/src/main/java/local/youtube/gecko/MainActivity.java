@@ -5,6 +5,7 @@ import android.app.PictureInPictureParams;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
@@ -47,6 +48,11 @@ public class MainActivity extends Activity {
     private GeckoSession mSession;
     private boolean mCanGoBack;
     private boolean mFullScreen;
+    /** The page went full screen only to fill a pop-up (picture-in-picture) window. */
+    private boolean mSwipePip;
+    /** Set when picture-in-picture ends; cleared if the app comes back, so onStop knows it was closed. */
+    private boolean mPipEnded;
+    private boolean mResumed;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,8 +125,27 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        mResumed = true;
+        mPipEnded = false;
+    }
+
+    @Override
+    protected void onPause() {
+        mResumed = false;
+        super.onPause();
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
+        if (mPipEnded) {
+            // The pop-up window was closed rather than expanded: stop, like the YouTube app.
+            mPipEnded = false;
+            Playback.pause();
+            return;
+        }
         // With background playback off, leaving the app pauses the video. Picture-in-picture
         // is still "started", so it doesn't pause.
         if (!backgroundPlayEnabled() && !isInPictureInPictureMode() && !isChangingConfigurations()) {
@@ -168,9 +193,73 @@ public class MainActivity extends Activity {
     @Override
     public void onPictureInPictureModeChanged(boolean inPip, Configuration newConfig) {
         super.onPictureInPictureModeChanged(inPip, newConfig);
-        if (!inPip && mFullScreen && !isFinishing()) {
+        if (inPip || isFinishing()) {
+            return;
+        }
+        // Expanding the window resumes the app (before or after this call); closing it doesn't.
+        mPipEnded = !mResumed;
+        if (mSwipePip) {
+            // Back from a swipe pop-up: return the page to its normal layout.
+            endSwipePip();
+        } else if (mFullScreen) {
             setFullScreen(true);
         }
+    }
+
+    /**
+     * Swipe-down pop-up player, driven by the helper extension's swipe-pip.js:
+     * "start" before the page goes full screen, "enter" once it has, "cancel" if it failed.
+     */
+    boolean swipePip(String phase, int width, int height) {
+        switch (phase) {
+            case "start":
+                if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+                        || isInPictureInPictureMode()) {
+                    return false;
+                }
+                mSwipePip = true;
+                return true;
+            case "enter":
+                if (!mSwipePip) {
+                    return false;
+                }
+                try {
+                    if (enterPictureInPictureMode(new PictureInPictureParams.Builder()
+                            .setAspectRatio(aspectRatio(width, height))
+                            .build())) {
+                        return true;
+                    }
+                } catch (IllegalStateException | IllegalArgumentException e) {
+                    Log.w(TAG, "Picture-in-picture failed", e);
+                }
+                endSwipePip();
+                return false;
+            default:
+                endSwipePip();
+                return true;
+        }
+    }
+
+    private void endSwipePip() {
+        mSwipePip = false;
+        if (mFullScreen) {
+            mSession.exitFullScreen();
+        }
+    }
+
+    /** Android only allows pop-up windows between 2.39:1 and 1:2.39. */
+    private static Rational aspectRatio(int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return new Rational(16, 9);
+        }
+        double r = (double) width / height;
+        if (r > 2.39) {
+            return new Rational(239, 100);
+        }
+        if (r < 1 / 2.39) {
+            return new Rational(100, 239);
+        }
+        return new Rational(width, height);
     }
 
     private static String urlFromIntent(Intent intent) {
@@ -255,7 +344,12 @@ public class MainActivity extends Activity {
         }
         if (fullScreen) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            // Wait a moment: a swipe pop-up goes full screen too, and must not rotate.
+            mRoot.postDelayed(() -> {
+                if (mFullScreen && !mSwipePip && !isInPictureInPictureMode()) {
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                }
+            }, 300);
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
