@@ -303,6 +303,8 @@ public class SettingsActivity extends Activity {
                 + "fades out, without the usual pause between tracks.");
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         box.addView(t);
+        box.setFocusable(true);
+        box.setBackground(focusable(0x00000000, dp(8)));
         box.setOnClickListener(v -> {
             String[] labels = new String[CROSSFADE_CHOICES.length];
             int checked = 0;
@@ -373,10 +375,7 @@ public class SettingsActivity extends Activity {
         b.setText(label);
         b.setAllCaps(false);
         b.setTextColor(primary ? 0xFFFFFFFF : TEXT);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(primary ? ACCENT : 0xFF3A3A3A);
-        bg.setCornerRadius(dp(18));
-        b.setBackground(bg);
+        b.setBackground(focusable(primary ? ACCENT : 0xFF3A3A3A, dp(18)));
         b.setMinHeight(dp(36));
         b.setMinimumHeight(dp(36));
         b.setPadding(dp(14), 0, dp(14), 0);
@@ -387,6 +386,24 @@ public class SettingsActivity extends Activity {
         b.setLayoutParams(lp);
         b.setOnClickListener(onClick);
         return b;
+    }
+
+    /**
+     * A rounded background that shows a white outline when focused, so the TV remote's
+     * position is visible (custom backgrounds lose the theme's focus highlight).
+     */
+    private android.graphics.drawable.Drawable focusable(int color, int radius) {
+        GradientDrawable normal = new GradientDrawable();
+        normal.setColor(color);
+        normal.setCornerRadius(radius);
+        GradientDrawable focused = new GradientDrawable();
+        focused.setColor(color);
+        focused.setCornerRadius(radius);
+        focused.setStroke(dp(3), 0xFFFFFFFF);
+        android.graphics.drawable.StateListDrawable states = new android.graphics.drawable.StateListDrawable();
+        states.addState(new int[] {android.R.attr.state_focused}, focused);
+        states.addState(new int[] {}, normal);
+        return states;
     }
 
     private void toast(String message) {
