@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "YouTube app helper",
-  "version": "2.1",
+  "version": "2.2",
   "browser_specific_settings": {
     "gecko": {
       "id": "tweaks@youtube.gecko.local"
@@ -24,7 +24,8 @@
       "matches": [
         "*://m.youtube.com/*",
         "*://www.youtube.com/*",
-        "*://youtube.com/*"
+        "*://youtube.com/*",
+        "*://music.youtube.com/*"
       ],
       "css": [
         "tweaks.css"
@@ -72,6 +73,15 @@
       ],
       "run_at": "document_start",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "*://music.youtube.com/*"
+      ],
+      "js": [
+        "music.js"
+      ],
+      "run_at": "document_idle"
     }
   ]
 }

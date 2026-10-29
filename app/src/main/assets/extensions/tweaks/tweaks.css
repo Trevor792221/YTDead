@@ -45,6 +45,8 @@ yt-overlay-product-sticker,
 .ytp-ad-overlay-container,
 .ytp-ad-image-overlay,
 .ytp-ad-text-overlay,
-.ytp-suggested-action-badge {
+.ytp-suggested-action-badge,
+ytmusic-mealbar-promo-renderer,
+ytmusic-statement-banner-renderer {
   display: none !important;
 }

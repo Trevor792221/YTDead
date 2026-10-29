@@ -6,6 +6,11 @@ An Android app that shows YouTube's mobile site (`m.youtube.com`, laid out like 
 YouTube app) in GeckoView, Firefox's browser engine for Android.
 
 - No browser UI: full screen YouTube with a dark theme.
+- Two tabs, **YouTube** and **Music** (YouTube Music), switched from the bar at the top. Each
+  keeps its own page and history; both share sign-in, extensions, ad removal, background
+  playback and the media notification. Starting playback in one tab pauses the other. Links to
+  the other site open in its tab; Back on the Music tab's first page returns to YouTube.
+  Long-press the app icon for a *Music* shortcut.
 - **App settings** (long-press the app icon → *Extensions & settings*, or the
   *App settings* button on YouTube's *You* page; it also opens on first launch):
   - install, update, turn on/off, remove and configure uBlock Origin, SponsorBlock and

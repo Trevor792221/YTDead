@@ -3,6 +3,7 @@
     <string name="app_name">YTDead</string>
     <string name="settings_title">App settings</string>
     <string name="shortcut_settings">Extensions &amp; settings</string>
+    <string name="shortcut_music">Music</string>
     <string name="playback_channel">Playback</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>

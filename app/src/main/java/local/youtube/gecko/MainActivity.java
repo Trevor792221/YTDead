@@ -14,8 +14,12 @@ import android.util.Rational;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.Gravity;
 import android.view.WindowManager;
-import android.widget.FrameLayout;
+import android.graphics.drawable.GradientDrawable;
+import android.util.TypedValue;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.window.OnBackInvokedDispatcher;
 
 import org.mozilla.geckoview.AllowOrDeny;
@@ -30,10 +34,21 @@ import org.mozilla.geckoview.GeckoView;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** A single full-screen GeckoView showing YouTube's mobile (app-style) site. */
+/**
+ * YouTube's mobile (app-style) site, with a second tab for YouTube Music. Each tab is its own
+ * GeckoSession, so it keeps its page and history while the other is shown; both share sign-in,
+ * extensions, ad removal and background playback.
+ */
 public class MainActivity extends Activity {
     private static final String TAG = GeckoApp.TAG;
-    private static final String HOME = "https://m.youtube.com/";
+    private static final int TAB_YOUTUBE = 0;
+    private static final int TAB_MUSIC = 1;
+    private static final String[] HOMES = {"https://m.youtube.com/", "https://music.youtube.com/"};
+    private static final String[] TAB_LABELS = {"YouTube", "Music"};
+
+    /** Links that belong to the other tab: YouTube pages people navigate to (not sign-in steps). */
+    private static final Pattern YOUTUBE_PAGE = Pattern.compile(
+            "^/($|watch|shorts|channel/|c/|user/|@|playlist|results|feed|live|hashtag)");
 
     /** Hosts that stay inside the app; any other link opens in the phone's browser. */
     private static final Pattern INTERNAL_HOST = Pattern.compile(
@@ -42,40 +57,34 @@ public class MainActivity extends Activity {
 
     private static final Pattern URL_IN_TEXT = Pattern.compile("https?://\\S+");
 
-    private FrameLayout mRoot;
+    private LinearLayout mRoot;
+    private LinearLayout mTabBar;
+    private final TextView[] mTabButtons = new TextView[2];
     private GeckoView mView;
-    private GeckoSession mSession;
-    private boolean mCanGoBack;
+    private final GeckoSession[] mSessions = new GeckoSession[2];
+    private final boolean[] mCanGoBack = new boolean[2];
+    private int mTab = TAB_YOUTUBE;
     private boolean mFullScreen;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mRoot = new FrameLayout(this);
+        mRoot = new LinearLayout(this);
+        mRoot.setOrientation(LinearLayout.VERTICAL);
         mRoot.setBackgroundColor(getColor(R.color.background));
+        mTabBar = buildTabBar();
+        mRoot.addView(mTabBar);
         mView = new GeckoView(this);
         mView.setAutofillEnabled(true);
         mView.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES);
-        mRoot.addView(mView);
+        mRoot.addView(mView, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(mRoot);
         mRoot.setOnApplyWindowInsetsListener(this::applyInsets);
         setFullScreen(false);
 
-        mSession = new GeckoSession(new GeckoSessionSettings.Builder()
-                .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
-                .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
-                .build());
-        mSession.setContentDelegate(new Content());
-        mSession.setNavigationDelegate(new Navigation());
-        mSession.setPermissionDelegate(new Permissions());
-        mSession.setPromptDelegate(new Prompts(this));
-        mSession.setMediaSessionDelegate(Playback.delegate(this::onMediaPlay));
-        mSession.open(GeckoApp.get().runtime());
-        mView.setSession(mSession);
-
         String url = urlFromIntent(getIntent());
-        mSession.loadUri(url != null ? url : HOME);
+        open(url != null ? tabFor(Uri.parse(url), TAB_YOUTUBE) : TAB_YOUTUBE, url);
 
         // First launch: show Settings so the extensions can be installed.
         if (savedInstanceState == null
@@ -94,8 +103,127 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         String url = urlFromIntent(intent);
         if (url != null) {
-            mSession.loadUri(url);
+            open(tabFor(Uri.parse(url), mTab), url);
         }
+    }
+
+    // --- Tabs -----------------------------------------------------------------------
+
+    private LinearLayout buildTabBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(12), dp(6), dp(12), dp(6));
+        for (int i = 0; i < TAB_LABELS.length; i++) {
+            final int tab = i;
+            TextView chip = new TextView(this);
+            chip.setText(TAB_LABELS[i]);
+            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            chip.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(dp(16), 0, dp(16), 0);
+            chip.setOnClickListener(v -> open(tab, null));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, dp(32));
+            lp.rightMargin = dp(8);
+            bar.addView(chip, lp);
+            mTabButtons[i] = chip;
+        }
+        return bar;
+    }
+
+    private void updateTabBar() {
+        for (int i = 0; i < mTabButtons.length; i++) {
+            boolean selected = i == mTab;
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(dp(8));
+            bg.setColor(selected ? 0xFFF1F1F1 : 0xFF272727);
+            mTabButtons[i].setBackground(bg);
+            mTabButtons[i].setTextColor(selected ? 0xFF0F0F0F : 0xFFF1F1F1);
+            mTabButtons[i].setSelected(selected);
+        }
+    }
+
+    private void updateTabBarVisibility() {
+        mTabBar.setVisibility(mFullScreen || isInPictureInPictureMode() ? View.GONE : View.VISIBLE);
+    }
+
+    /** Shows a tab, creating its page on first use, and loads url in it if given. */
+    private void open(int tab, String url) {
+        GeckoSession session = mSessions[tab];
+        if (session == null) {
+            session = newSession();
+            mSessions[tab] = session;
+            session.loadUri(url != null ? url : HOMES[tab]);
+        } else if (url != null) {
+            session.loadUri(url);
+        }
+        if (mView.getSession() != session) {
+            GeckoSession shown = mView.getSession();
+            if (shown != null) {
+                if (mFullScreen) {
+                    shown.exitFullScreen();
+                }
+                mView.releaseSession();
+                // Hidden tabs keep playing audio, like background tabs in Firefox.
+                shown.setActive(false);
+            }
+            mView.setSession(session);
+            session.setActive(true);
+        }
+        mTab = tab;
+        updateTabBar();
+    }
+
+    private GeckoSession newSession() {
+        GeckoSession session = new GeckoSession(new GeckoSessionSettings.Builder()
+                .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
+                .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
+                .build());
+        session.setContentDelegate(new Content());
+        session.setNavigationDelegate(new Navigation());
+        session.setPermissionDelegate(new Permissions());
+        session.setPromptDelegate(new Prompts(this));
+        session.setMediaSessionDelegate(Playback.delegate(this::onMediaPlay));
+        session.open(GeckoApp.get().runtime());
+        return session;
+    }
+
+    private int tabOf(GeckoSession session) {
+        return session == mSessions[TAB_MUSIC] ? TAB_MUSIC : TAB_YOUTUBE;
+    }
+
+    /** Which tab a YouTube or YouTube Music link belongs to, or fallback for anything else. */
+    private static int tabFor(Uri uri, int fallback) {
+        String host = uri.getHost();
+        if (host == null) {
+            return fallback;
+        }
+        if (host.equals("music.youtube.com")) {
+            return TAB_MUSIC;
+        }
+        if (host.equals("youtu.be") || host.equals("youtube.com") || host.equals("m.youtube.com")
+                || host.equals("www.youtube.com")) {
+            return TAB_YOUTUBE;
+        }
+        return fallback;
+    }
+
+    /** A link in one tab to the other site: open it in that site's tab instead. */
+    private boolean belongsToOtherTab(GeckoSession from, Uri uri) {
+        int to = tabFor(uri, -1);
+        if (to < 0 || to == tabOf(from)) {
+            return false;
+        }
+        String path = uri.getPath() == null ? "/" : uri.getPath();
+        if (to == TAB_YOUTUBE) {
+            return "youtu.be".equals(uri.getHost()) || YOUTUBE_PAGE.matcher(path).find();
+        }
+        return !path.contains("signin") && !path.contains("logout");
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private boolean backgroundPlayEnabled() {
@@ -130,9 +258,12 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (mSession != null) {
-            mView.releaseSession();
-            mSession.close();
+        mView.releaseSession();
+        for (int i = 0; i < mSessions.length; i++) {
+            if (mSessions[i] != null) {
+                mSessions[i].close();
+                mSessions[i] = null;
+            }
         }
         super.onDestroy();
     }
@@ -144,10 +275,13 @@ public class MainActivity extends Activity {
     }
 
     private void handleBack() {
+        GeckoSession session = mSessions[mTab];
         if (mFullScreen) {
-            mSession.exitFullScreen();
-        } else if (mCanGoBack) {
-            mSession.goBack();
+            session.exitFullScreen();
+        } else if (mCanGoBack[mTab]) {
+            session.goBack();
+        } else if (mTab == TAB_MUSIC) {
+            open(TAB_YOUTUBE, null);
         } else {
             // Like the real app: go to the home screen but keep playing.
             moveTaskToBack(true);
@@ -168,6 +302,7 @@ public class MainActivity extends Activity {
     @Override
     public void onPictureInPictureModeChanged(boolean inPip, Configuration newConfig) {
         super.onPictureInPictureModeChanged(inPip, newConfig);
+        updateTabBarVisibility();
         if (!inPip && mFullScreen && !isFinishing()) {
             setFullScreen(true);
         }
@@ -260,6 +395,7 @@ public class MainActivity extends Activity {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         }
+        updateTabBarVisibility();
         mRoot.requestApplyInsets();
     }
 
@@ -281,21 +417,24 @@ public class MainActivity extends Activity {
     }
 
     private void recreateSession() {
-        mView.releaseSession();
-        mSession.close();
-        mSession = null;
+        // onDestroy closes the sessions.
         recreate();
     }
 
     private class Navigation implements NavigationDelegate {
         @Override
         public void onCanGoBack(GeckoSession session, boolean canGoBack) {
-            mCanGoBack = canGoBack;
+            mCanGoBack[tabOf(session)] = canGoBack;
         }
 
         @Override
         public GeckoResult<AllowOrDeny> onLoadRequest(GeckoSession session, LoadRequest request) {
             Uri uri = Uri.parse(request.uri);
+            if (!request.isRedirect && belongsToOtherTab(session, uri)) {
+                String url = request.uri;
+                mRoot.post(() -> open(tabFor(uri, mTab), url));
+                return GeckoResult.deny();
+            }
             if (isInternal(uri)) {
                 return GeckoResult.allow();
             }
@@ -305,9 +444,12 @@ public class MainActivity extends Activity {
 
         @Override
         public GeckoResult<GeckoSession> onNewSession(GeckoSession session, String uri) {
-            // Links that would open a new tab open in this one instead.
-            if (isInternal(Uri.parse(uri))) {
-                mSession.loadUri(uri);
+            // Links that would open a new tab open in this one (or the other site's tab) instead.
+            Uri parsed = Uri.parse(uri);
+            if (belongsToOtherTab(session, parsed)) {
+                mRoot.post(() -> open(tabFor(parsed, mTab), uri));
+            } else if (isInternal(parsed)) {
+                session.loadUri(uri);
             } else {
                 openExternally(uri);
             }

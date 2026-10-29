@@ -11,4 +11,15 @@
             android:targetPackage="local.youtube.gecko"
             android:targetClass="local.youtube.gecko.SettingsActivity" />
     </shortcut>
+    <shortcut
+        android:shortcutId="music"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_music">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://music.youtube.com/"
+            android:targetPackage="local.youtube.gecko"
+            android:targetClass="local.youtube.gecko.MainActivity" />
+    </shortcut>
 </shortcuts>

@@ -1,7 +1,7 @@
-// Adds an "App settings" button to YouTube's "You" page.
+// Adds an "App settings" button to YouTube's "You" page and YouTube Music's Library.
 "use strict";
 
-const PAGES = /^\/(feed\/(you|library|account)|account)(\/|$)/;
+const PAGES = /^\/(feed\/(you|library|account)|account|library)(\/|$)/;
 let button = null;
 
 function update() {
