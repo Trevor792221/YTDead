@@ -154,6 +154,13 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                         activity.startActivity(new Intent(activity, SettingsActivity.class));
                     }
                     return GeckoResult.fromValue(true);
+                case "getPrefs":
+                    try {
+                        return GeckoResult.fromValue(new JSONObject().put("highestQuality",
+                                Extensions.prefs(GeckoApp.this).getBoolean(Extensions.PREF_HIGHEST_QUALITY, true)));
+                    } catch (org.json.JSONException e) {
+                        return null;
+                    }
                 case "webauthn":
                     return Passkeys.handle(mCurrentActivity, msg);
                 default:

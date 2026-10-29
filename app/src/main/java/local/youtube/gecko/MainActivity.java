@@ -70,6 +70,7 @@ public class MainActivity extends Activity {
         mSession.setNavigationDelegate(new Navigation());
         mSession.setPermissionDelegate(new Permissions());
         mSession.setPromptDelegate(new Prompts(this));
+        mSession.setMediaSessionDelegate(Playback.delegate(this::onMediaPlay));
         mSession.open(GeckoApp.get().runtime());
         mView.setSession(mSession);
 
@@ -94,6 +95,36 @@ public class MainActivity extends Activity {
         String url = urlFromIntent(intent);
         if (url != null) {
             mSession.loadUri(url);
+        }
+    }
+
+    private boolean backgroundPlayEnabled() {
+        return Extensions.prefs(this).getBoolean(Extensions.PREF_BACKGROUND_PLAY, true);
+    }
+
+    private void onMediaPlay() {
+        if (!backgroundPlayEnabled()) {
+            return;
+        }
+        // The media notification is exempt from the notification permission, but ask once so
+        // it also shows on phones that hide it without the permission.
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED
+                && !Extensions.prefs(this).getBoolean("asked_notifications", false)) {
+            Extensions.prefs(this).edit().putBoolean("asked_notifications", true).apply();
+            requestPermissions(new String[] {android.Manifest.permission.POST_NOTIFICATIONS}, 1);
+        }
+        PlaybackService.start(this);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // With background playback off, leaving the app pauses the video. Picture-in-picture
+        // is still "started", so it doesn't pause.
+        if (!backgroundPlayEnabled() && !isInPictureInPictureMode() && !isChangingConfigurations()) {
+            Playback.pause();
         }
     }
 

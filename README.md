@@ -24,8 +24,13 @@ YouTube app) in GeckoView, Firefox's browser engine for Android.
   - mutes, skips and fast-forwards any video ad that still plays, then restores sound and speed
   - hides leftover ad boxes
 - Pages can show alerts, confirmations, `<select>` menus, HTTP sign-in and the share sheet.
+- Highest video quality: each video switches to the best quality offered (Premium-only
+  levels are skipped; a quality you pick yourself is kept). Can be turned off in App settings.
+- Background playback with a media notification: play/pause, previous/next (or back/forward
+  10 seconds when there is no next video), a seek bar, lock-screen controls, headset buttons,
+  and pausing when headphones are unplugged or a call comes in. Can be turned off in App settings.
 - Full-screen videos go landscape; Home during a full-screen video switches to
-  picture-in-picture; videos keep playing in the background.
+  picture-in-picture.
 - YouTube links (and *Share → YouTube*) can open in the app. Other links open in your browser.
 
 The app's own helper extension (`app/src/main/assets/extensions/tweaks`) provides the

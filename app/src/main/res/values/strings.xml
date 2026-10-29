@@ -3,4 +3,12 @@
     <string name="app_name">YTDead</string>
     <string name="settings_title">App settings</string>
     <string name="shortcut_settings">Extensions &amp; settings</string>
+    <string name="playback_channel">Playback</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="rewind_10">Back 10 seconds</string>
+    <string name="forward_10">Forward 10 seconds</string>
+    <string name="close">Close</string>
 </resources>

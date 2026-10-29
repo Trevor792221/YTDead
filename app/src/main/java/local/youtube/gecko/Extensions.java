@@ -47,6 +47,8 @@ final class Extensions {
     static final String PREF_AUTO_UPDATE = "auto_update";
     private static final String PREF_LAST_UPDATE_CHECK = "last_update_check";
     static final String PREF_ONBOARDED = "onboarded";
+    static final String PREF_BACKGROUND_PLAY = "background_play";
+    static final String PREF_HIGHEST_QUALITY = "highest_quality";
     private static final long UPDATE_INTERVAL_MS = 24L * 60 * 60 * 1000;
 
     private Extensions() {

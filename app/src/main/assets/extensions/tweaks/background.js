@@ -3,8 +3,8 @@
 // Relays requests from content scripts to the app. The page's origin comes from the
 // sender, which the page can't fake, never from the message itself.
 browser.runtime.onMessage.addListener((msg, sender) => {
-  if (msg?.type === "openSettings") {
-    return browser.runtime.sendNativeMessage("ytgecko", { type: "openSettings" });
+  if (msg?.type === "openSettings" || msg?.type === "getPrefs") {
+    return browser.runtime.sendNativeMessage("ytgecko", { type: msg.type });
   }
   if (msg?.type === "webauthn") {
     return webauthn(msg, sender);

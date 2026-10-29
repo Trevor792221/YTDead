@@ -133,6 +133,15 @@ public class SettingsActivity extends Activity {
         auto.setPadding(0, dp(8), 0, dp(8));
         mList.addView(auto);
 
+        mList.addView(heading("Playback", 18));
+        mList.addView(toggle("Highest video quality",
+                "Always start videos at the best quality available, instead of the size the player picks.",
+                Extensions.PREF_HIGHEST_QUALITY));
+        mList.addView(toggle("Background playback",
+                "Keep playing with the screen off or in other apps, with play/pause and skip controls "
+                        + "in a notification.",
+                Extensions.PREF_BACKGROUND_PLAY));
+
         mList.addView(heading("Passwords and passkeys", 18));
         mList.addView(body("Sign-in forms use your phone's password manager (autofill service), and passkeys "
                 + "use your phone's passkey provider. If nothing is offered, check which ones are "
@@ -264,6 +273,23 @@ public class SettingsActivity extends Activity {
         } catch (Exception e) {
             openAutofillSettings();
         }
+    }
+
+    private View toggle(String title, String summary, String pref) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(0, dp(6), 0, dp(6));
+        Switch s = new Switch(this);
+        s.setText(title);
+        s.setTextColor(TEXT);
+        s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        s.setChecked(Extensions.prefs(this).getBoolean(pref, true));
+        s.setOnCheckedChangeListener((b, on) -> Extensions.prefs(this).edit().putBoolean(pref, on).apply());
+        box.addView(s);
+        TextView t = body(summary);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        box.addView(t);
+        return box;
     }
 
     private TextView heading(String text, int sp) {
