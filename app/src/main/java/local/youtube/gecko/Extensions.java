@@ -49,7 +49,6 @@ final class Extensions {
     static final String PREF_ONBOARDED = "onboarded";
     static final String PREF_BACKGROUND_PLAY = "background_play";
     static final String PREF_HIGHEST_QUALITY = "highest_quality";
-    static final String PREF_SWIPE_PIP = "swipe_pip";
     private static final long UPDATE_INTERVAL_MS = 24L * 60 * 60 * 1000;
 
     private Extensions() {

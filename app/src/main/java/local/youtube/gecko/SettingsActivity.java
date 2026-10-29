@@ -137,9 +137,6 @@ public class SettingsActivity extends Activity {
         mList.addView(toggle("Highest video quality",
                 "Always start videos at the best quality available, instead of the size the player picks.",
                 Extensions.PREF_HIGHEST_QUALITY));
-        mList.addView(toggle("Swipe down for pop-up player",
-                "Swipe down on a video to keep watching it in a small floating window.",
-                Extensions.PREF_SWIPE_PIP));
         mList.addView(toggle("Background playback",
                 "Keep playing with the screen off or in other apps, with play/pause and skip controls "
                         + "in a notification.",

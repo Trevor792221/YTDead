@@ -156,24 +156,11 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                     return GeckoResult.fromValue(true);
                 case "getPrefs":
                     try {
-                        return GeckoResult.fromValue(new JSONObject()
-                                .put("highestQuality", Extensions.prefs(GeckoApp.this)
-                                        .getBoolean(Extensions.PREF_HIGHEST_QUALITY, true))
-                                .put("swipePip", Extensions.prefs(GeckoApp.this)
-                                        .getBoolean(Extensions.PREF_SWIPE_PIP, true)));
+                        return GeckoResult.fromValue(new JSONObject().put("highestQuality",
+                                Extensions.prefs(GeckoApp.this).getBoolean(Extensions.PREF_HIGHEST_QUALITY, true)));
                     } catch (org.json.JSONException e) {
                         return null;
                     }
-                case "pip": {
-                    boolean ok = mCurrentActivity instanceof MainActivity
-                            && ((MainActivity) mCurrentActivity).swipePip(
-                                    msg.optString("phase"), msg.optInt("width", 16), msg.optInt("height", 9));
-                    try {
-                        return GeckoResult.fromValue(new JSONObject().put("ok", ok));
-                    } catch (org.json.JSONException e) {
-                        return null;
-                    }
-                }
                 case "webauthn":
                     return Passkeys.handle(mCurrentActivity, msg);
                 default:

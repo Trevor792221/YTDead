@@ -33,8 +33,7 @@
         "background-play.js",
         "settings-button.js",
         "ads-player.js",
-        "prefs.js",
-        "swipe-pip.js"
+        "prefs.js"
       ],
       "run_at": "document_start"
     },
