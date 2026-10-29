@@ -1,6 +1,6 @@
 # YTDead
 
-YouTube for Android without the ads.
+YouTube for Android without the ads. Not affiliated with YouTube or Google.
 
 An Android app that shows YouTube's mobile site (`m.youtube.com`, laid out like the
 YouTube app) in GeckoView, Firefox's browser engine for Android.
