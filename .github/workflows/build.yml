@@ -89,3 +89,21 @@ jobs:
           # Not "latest": the README's download button on main gets the phone APK from there.
           make_latest: false
           generate_release_notes: true
+
+      # The README's TV download buttons link to the "tv-latest" release, which always holds
+      # the newest TV APKs under fixed names.
+      - name: Update the tv-latest download
+        if: steps.release.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp "YTDead-TV-$VERSION-arm32.apk" YTDead-TV-arm32.apk
+          cp "YTDead-TV-$VERSION-arm64.apk" YTDead-TV-arm64.apk
+          if ! gh release view tv-latest --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create tv-latest --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --latest=false --title "YTDead TV (newest)" \
+              --notes "Always the newest YTDead TV version. arm32 works on most Android TVs; arm64 is for newer 64-bit TVs."
+          fi
+          gh release upload tv-latest YTDead-TV-arm32.apk YTDead-TV-arm64.apk \
+            --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit tv-latest --repo "$GITHUB_REPOSITORY" --title "YTDead TV $VERSION (newest)" --latest=false
