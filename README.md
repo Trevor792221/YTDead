@@ -1,4 +1,8 @@
-# YTDead
+# YTDead (TV version)
+
+> This is the **`tv` branch**: the Android TV version. The phone version is on `main`.
+> Releases from this branch are tagged `tv-v<version>` and their APKs are named
+> `YTDead-TV-<version>-arm32.apk` (most TVs) and `YTDead-TV-<version>-arm64.apk`.
 
 YouTube for Android without the ads. Not affiliated with YouTube or Google.
 

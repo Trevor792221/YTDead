@@ -1,6 +1,6 @@
-# Builds the APKs (arm64 for phones and newer TVs, arm32 for 32-bit Android such as most
-# Android TV devices) on every push and pull request. Pushing a tag like v2.1 also publishes
-# a GitHub Release with the signed APKs attached.
+# TV version (the "tv" branch). Builds the APKs (arm32 for 32-bit Android, which most Android
+# TV devices run, and arm64 for newer TVs) on every push. Pushing a tag like tv-v3.2 also
+# publishes a GitHub Release with the signed APKs attached. The phone version lives on main.
 #
 # Signing uses these repository secrets (Settings > Secrets and variables > Actions):
 #   KEYSTORE_BASE64    the release keystore, base64-encoded (base64 -w0 release.jks)
@@ -8,12 +8,12 @@
 #   KEY_ALIAS          the key alias
 #   KEY_PASSWORD       the key password
 # Without them, builds are signed with a throwaway debug key and no release is published.
-name: Build APK
+name: Build TV APK
 
 on:
   push:
-    branches: [main]
-    tags: ["v*"]
+    branches: [tv]
+    tags: ["tv-v*"]
   pull_request:
   workflow_dispatch:
 
@@ -54,18 +54,18 @@ jobs:
       - name: Name the APKs
         run: |
           version=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle)
-          cp app/build/outputs/apk/arm64/release/app-arm64-release.apk "YTDead-$version-arm64.apk"
-          cp app/build/outputs/apk/arm32/release/app-arm32-release.apk "YTDead-$version-arm32.apk"
+          cp app/build/outputs/apk/arm64/release/app-arm64-release.apk "YTDead-TV-$version-arm64.apk"
+          cp app/build/outputs/apk/arm32/release/app-arm32-release.apk "YTDead-TV-$version-arm32.apk"
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: YTDead-${{ env.VERSION }}
-          path: YTDead-*.apk
+          name: YTDead-TV-${{ env.VERSION }}
+          path: YTDead-TV-*.apk
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v') && env.YTDEAD_KEYSTORE != ''
+        if: startsWith(github.ref, 'refs/tags/tv-v') && env.YTDEAD_KEYSTORE != ''
         uses: softprops/action-gh-release@v2
         with:
-          files: YTDead-*.apk
+          files: YTDead-TV-*.apk
           generate_release_notes: true
