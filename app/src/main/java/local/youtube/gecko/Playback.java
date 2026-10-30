@@ -33,6 +33,8 @@ final class Playback {
         double positionSec;
         double rate = 1;
         long positionTime;
+        /** Whether it's in the YouTube Music tab. */
+        boolean music;
     }
 
     private static final Map<MediaSession, State> sStates = new HashMap<>();
@@ -107,15 +109,41 @@ final class Playback {
 
     // --- Controls -----------------------------------------------------------------
 
+    // Play and pause go through YouTube's own player (page-control.js) when the page can be
+    // reached: started directly, the video element plays but YouTube's player still thinks it's
+    // paused and stops it again a moment later. GeckoView's media controls are the fallback.
+    private static final long PAGE_CONTROL_TIMEOUT_MS = 1000;
+    private static final android.os.Handler sHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+
     static void play() {
-        if (sSession != null) {
-            sSession.play();
+        final MediaSession ms = sSession;
+        if (ms == null) {
+            return;
+        }
+        if (GeckoApp.get().controlPage("play", state(ms).music)) {
+            sHandler.postDelayed(() -> {
+                if (sStates.containsKey(ms) && !state(ms).playing) {
+                    ms.play();
+                }
+            }, PAGE_CONTROL_TIMEOUT_MS);
+        } else {
+            ms.play();
         }
     }
 
     static void pause() {
-        if (sSession != null) {
-            sSession.pause();
+        final MediaSession ms = sSession;
+        if (ms == null) {
+            return;
+        }
+        if (GeckoApp.get().controlPage("pause", state(ms).music)) {
+            sHandler.postDelayed(() -> {
+                if (sStates.containsKey(ms) && state(ms).playing) {
+                    ms.pause();
+                }
+            }, PAGE_CONTROL_TIMEOUT_MS);
+        } else {
+            ms.pause();
         }
     }
 
@@ -176,11 +204,11 @@ final class Playback {
     // --- Updates from GeckoView -------------------------------------------------------
 
     /** Feeds a GeckoSession's media events into this state. */
-    static MediaSession.Delegate delegate(Runnable onPlay) {
+    static MediaSession.Delegate delegate(Runnable onPlay, boolean music) {
         return new MediaSession.Delegate() {
             @Override
             public void onActivated(GeckoSession session, MediaSession ms) {
-                state(ms);
+                state(ms).music = music;
                 changed(ms);
             }
 

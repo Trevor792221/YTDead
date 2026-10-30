@@ -59,6 +59,33 @@ ytmusic-statement-banner-renderer {
     display: none !important;
   }
 }
+/* The app says it's in picture-in-picture (page-control.js): only the video, filling the
+   window, whether or not YouTube kept it full screen. */
+html[data-ytdead-pip],
+html[data-ytdead-pip] body {
+  background: #000 !important;
+  overflow: hidden !important;
+}
+html[data-ytdead-pip] body *:not(video):not(:has(video)) {
+  display: none !important;
+}
+html[data-ytdead-pip] body *:has(video) {
+  position: static !important;
+  transform: none !important;
+  filter: none !important;
+  contain: none !important;
+}
+html[data-ytdead-pip] video {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  object-fit: contain !important;
+  transform: none !important;
+  z-index: 2147483647 !important;
+  background: #000 !important;
+}
 
 /* YouTube's player has two screen-reader buttons, "Rewind 10 seconds" and "Fast forward 10
    seconds", meant to stay invisible. On some phones they're drawn as big circles on top of

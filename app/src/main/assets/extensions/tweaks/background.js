@@ -68,3 +68,33 @@ async function webauthn(msg, sender) {
     options: msg.options,
   });
 }
+
+// Messages from the app to the pages (page-control.js): picture-in-picture on/off, and play /
+// pause for YouTube's own player. The app can only answer the extension, so the extension keeps
+// a line open to it and passes its messages on.
+const pagePorts = new Set();
+let pip = { type: "pip", on: false };
+
+function connectApp() {
+  const app = browser.runtime.connectNative("ytgecko");
+  app.onMessage.addListener((msg) => {
+    if (msg?.type === "pip") {
+      pip = msg;
+    }
+    for (const port of pagePorts) {
+      port.postMessage(msg);
+    }
+  });
+  // The app may not be listening yet at startup; try again.
+  app.onDisconnect.addListener(() => setTimeout(connectApp, 1000));
+}
+connectApp();
+
+browser.runtime.onConnect.addListener((port) => {
+  if (port.name !== "ytdead-page") {
+    return;
+  }
+  pagePorts.add(port);
+  port.onDisconnect.addListener(() => pagePorts.delete(port));
+  port.postMessage(pip);
+});

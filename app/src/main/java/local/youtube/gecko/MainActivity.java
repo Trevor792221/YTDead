@@ -184,7 +184,7 @@ public class MainActivity extends Activity {
     private void open(int tab, String url) {
         GeckoSession session = mSessions[tab];
         if (session == null) {
-            session = newSession();
+            session = newSession(tab == TAB_MUSIC);
             mSessions[tab] = session;
             session.loadUri(url != null ? url : HOMES[tab]);
         } else if (url != null) {
@@ -209,7 +209,7 @@ public class MainActivity extends Activity {
         updateTabBar();
     }
 
-    private GeckoSession newSession() {
+    private GeckoSession newSession(boolean music) {
         GeckoSession session = new GeckoSession(new GeckoSessionSettings.Builder()
                 .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
                 .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
@@ -218,7 +218,7 @@ public class MainActivity extends Activity {
         session.setNavigationDelegate(new Navigation());
         session.setPermissionDelegate(new Permissions());
         session.setPromptDelegate(new Prompts(this));
-        session.setMediaSessionDelegate(Playback.delegate(this::onMediaPlay));
+        session.setMediaSessionDelegate(Playback.delegate(this::onMediaPlay, music));
         session.open(GeckoApp.get().runtime());
         return session;
     }
@@ -330,6 +330,9 @@ public class MainActivity extends Activity {
         // Leaving the app while a video is full screen shrinks it to picture-in-picture.
         if (mFullScreen && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
             try {
+                // Show only the video in the pop-up (tweaks.css), whatever YouTube does with
+                // full screen when the window shrinks.
+                GeckoApp.get().setPictureInPicture(true);
                 enterPictureInPictureMode(pipParams());
             } catch (IllegalStateException e) {
                 Log.w(TAG, "Picture-in-picture not available", e);
@@ -414,6 +417,7 @@ public class MainActivity extends Activity {
     @Override
     public void onPictureInPictureModeChanged(boolean inPip, Configuration newConfig) {
         super.onPictureInPictureModeChanged(inPip, newConfig);
+        GeckoApp.get().setPictureInPicture(inPip);
         updateTabBarVisibility();
         if (!inPip && mFullScreen && !isFinishing()) {
             setFullScreen(true);

@@ -33,6 +33,9 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
     private GeckoRuntime mRuntime;
     private Activity mCurrentActivity;
     private final List<Runnable> mExtensionListeners = new ArrayList<>();
+    /** The helper extension's open line to the app, for messages to the pages (page-control.js). */
+    private WebExtension.Port mPagePort;
+    private boolean mPictureInPicture;
 
     static GeckoApp get() {
         return sInstance;
@@ -86,6 +89,39 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
         for (Runnable listener : new ArrayList<>(mExtensionListeners)) {
             listener.run();
         }
+    }
+
+    /** Tells the pages whether the app is in picture-in-picture (they then show only the video). */
+    void setPictureInPicture(boolean on) {
+        if (mPictureInPicture != on) {
+            mPictureInPicture = on;
+            sendToPages(pictureInPictureMessage());
+        }
+    }
+
+    /** Asks YouTube's (or YouTube Music's) player to play or pause. False if no page can be reached. */
+    boolean controlPage(String action, boolean music) {
+        try {
+            return sendToPages(new JSONObject().put("type", "control").put("action", action).put("music", music));
+        } catch (org.json.JSONException e) {
+            return false;
+        }
+    }
+
+    private JSONObject pictureInPictureMessage() {
+        try {
+            return new JSONObject().put("type", "pip").put("on", mPictureInPicture);
+        } catch (org.json.JSONException e) {
+            return new JSONObject();
+        }
+    }
+
+    private boolean sendToPages(JSONObject message) {
+        if (mPagePort == null) {
+            return false;
+        }
+        mPagePort.postMessage(message);
+        return true;
     }
 
     private void setUpExtensions(WebExtensionController controller) {
@@ -151,6 +187,23 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
      * replies are sent as JSON text and parsed by background.js.
      */
     private class NativeMessages implements WebExtension.MessageDelegate {
+        @Override
+        public void onConnect(WebExtension.Port port) {
+            if (port.sender.environmentType != WebExtension.MessageSender.ENV_TYPE_EXTENSION) {
+                return;
+            }
+            mPagePort = port;
+            port.setDelegate(new WebExtension.PortDelegate() {
+                @Override
+                public void onDisconnect(WebExtension.Port p) {
+                    if (mPagePort == p) {
+                        mPagePort = null;
+                    }
+                }
+            });
+            port.postMessage(pictureInPictureMessage());
+        }
+
         @Override
         public GeckoResult<Object> onMessage(String nativeApp, Object message, WebExtension.MessageSender sender) {
             if (!(message instanceof JSONObject)
