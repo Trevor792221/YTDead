@@ -31,6 +31,15 @@
     "productListRenderer",
   ]);
 
+  // Large parts of responses that never hold ads; not walking them keeps this cheap on slow
+  // TV processors.
+  const SKIP = new Set([
+    "responseContext", "frameworkUpdates", "trackingParams", "clickTrackingParams",
+    "loggingDirectives", "streamingData", "storyboards", "captions", "microformat",
+    "playbackTracking", "playerConfig", "attestation", "heatmap", "heatMarkers",
+    "thumbnail", "thumbnails", "accessibility", "accessibilityData", "commandMetadata",
+  ]);
+
   // Wrappers whose ad-ness is decided by what they contain.
   const WRAPPERS = ["richItemRenderer", "richSectionRenderer", "reelItemRenderer", "shelfRenderer"];
 
@@ -92,9 +101,9 @@
     for (const key in node) {
       if (AD_RENDERERS.has(key)) {
         delete node[key];
-      } else {
+      } else if (!SKIP.has(key)) {
         const value = node[key];
-        if (value && typeof value === "object") {
+        if (value !== null && typeof value === "object") {
           clean(value, depth + 1);
         }
       }

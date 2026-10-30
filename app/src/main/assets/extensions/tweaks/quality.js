@@ -1,10 +1,15 @@
 // Runs in the page. YouTube's player starts at a quality sized to the (small) phone player
-// and the data-saving defaults; this switches each new video to the best quality offered,
-// once. Picking a quality yourself in the player menu is left alone. Levels that need
-// YouTube Premium are skipped.
+// and the data-saving defaults; this switches each new video to the best quality offered, up
+// to the screen's resolution, once. Picking a quality yourself in the player menu is left
+// alone. Levels that need YouTube Premium are skipped.
 (() => {
   "use strict";
   const ORDER = ["highres", "hd2880", "hd2160", "hd1440", "hd1080", "hd720", "large", "medium", "small", "tiny"];
+  const HEIGHT = { highres: 4320, hd2880: 2880, hd2160: 2160, hd1440: 1440, hd1080: 1080, hd720: 720,
+    large: 480, medium: 360, small: 240, tiny: 144 };
+  // No more than the screen can show (set by prefs.js; 0 = unknown). A little slack so a 1080p
+  // screen reported as 1076 pixels still gets 1080p.
+  const maxHeight = () => Number(document.documentElement.getAttribute("data-ytdead-maxh")) || 0;
   const MAX_TRIES = 20;
   let videoId = null;
   let tries = 0;
@@ -29,6 +34,13 @@
       levels = player.getAvailableQualityLevels() || [];
     }
     levels = levels.filter((q) => ORDER.includes(q));
+    const cap = maxHeight();
+    if (cap) {
+      const fitting = levels.filter((q) => HEIGHT[q] <= cap + 64);
+      if (fitting.length) {
+        levels = fitting;
+      }
+    }
     levels.sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     return levels[0];
   }

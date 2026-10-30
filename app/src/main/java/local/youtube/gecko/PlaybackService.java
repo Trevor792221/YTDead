@@ -42,6 +42,8 @@ public class PlaybackService extends Service implements Playback.Listener {
     private AudioFocusRequest mFocusRequest;
     private boolean mHasFocus;
     private boolean mForeground;
+    /** What the notification last showed; rebuilt only when this changes, not every second. */
+    private String mShownKey;
 
     private final BroadcastReceiver mNoisy = new BroadcastReceiver() {
         @Override
@@ -189,7 +191,12 @@ public class PlaybackService extends Service implements Playback.Listener {
             mHasFocus = mAudio.requestAudioFocus(mFocusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
         }
         updateSession();
-        getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, buildNotification());
+        String key = Playback.title + "|" + Playback.artist + "|" + System.identityHashCode(Playback.artwork)
+                + "|" + Playback.playing + "|" + Playback.features;
+        if (!key.equals(mShownKey)) {
+            mShownKey = key;
+            getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, buildNotification());
+        }
     }
 
     private void onAudioFocusChange(int change) {

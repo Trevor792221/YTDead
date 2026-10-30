@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mTv = isTv();
+        mTv = Device.isTv(this);
 
         mRoot = new LinearLayout(this);
         mRoot.setOrientation(LinearLayout.VERTICAL);
@@ -126,12 +126,6 @@ public class MainActivity extends Activity {
     }
 
     // --- Android TV -----------------------------------------------------------------
-
-    private boolean isTv() {
-        android.app.UiModeManager ui = getSystemService(android.app.UiModeManager.class);
-        return (ui != null && ui.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION)
-                || getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
-    }
 
     /** A YouTube link as the TV interface's address for the same video, or its home. */
     private static String tvUrl(Uri uri) {
@@ -259,7 +253,10 @@ public class MainActivity extends Activity {
                 .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
                 .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE);
         if (mTv) {
-            settings.userAgentOverride(TV_USER_AGENT);
+            // The TV page has no viewport tag: lay it out at the screen's width rather than as
+            // a shrunk-down desktop page.
+            settings.userAgentOverride(TV_USER_AGENT)
+                    .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_DESKTOP);
         }
         GeckoSession session = new GeckoSession(settings.build());
         session.setContentDelegate(new Content());

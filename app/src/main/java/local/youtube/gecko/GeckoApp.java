@@ -51,11 +51,17 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
      */
     GeckoRuntime runtime() {
         if (mRuntime == null) {
+            boolean tv = Device.isTv(this);
             GeckoRuntimeSettings settings = new GeckoRuntimeSettings.Builder()
                     .preferredColorScheme(GeckoRuntimeSettings.COLOR_SCHEME_DARK)
-                    .automaticFontSizeAdjustment(true)
+                    // YouTube's TV interface is laid out for its own text sizes; enlarged text
+                    // (system font scale, Firefox's mobile font inflation) overlaps its icons.
+                    .automaticFontSizeAdjustment(!tv)
+                    .fontInflation(false)
+                    .fontSizeFactor(1.0f)
                     .loginAutofillEnabled(true)
                     .consoleOutput(false)
+                    .lowMemoryDetection(true)
                     .build();
             mRuntime = GeckoRuntime.create(this, settings);
             setUpExtensions(mRuntime.getWebExtensionController());
@@ -160,7 +166,12 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                                 .put("highestQuality", Extensions.prefs(GeckoApp.this)
                                         .getBoolean(Extensions.PREF_HIGHEST_QUALITY, true))
                                 .put("crossfadeSeconds", Extensions.prefs(GeckoApp.this)
-                                        .getInt(Extensions.PREF_CROSSFADE, Extensions.CROSSFADE_DEFAULT)));
+                                        .getInt(Extensions.PREF_CROSSFADE, Extensions.CROSSFADE_DEFAULT))
+                                // Offer YouTube only what this device decodes in hardware, and
+                                // no more resolution than its screen shows.
+                                .put("av1", Device.av1Hardware())
+                                .put("vp9", Device.vp9Hardware())
+                                .put("maxHeight", Device.maxVideoHeight(GeckoApp.this)));
                     } catch (org.json.JSONException e) {
                         return null;
                     }

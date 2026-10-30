@@ -40,6 +40,10 @@ YouTube app) in GeckoView, Firefox's browser engine for Android.
   - blocks ad servers, ad-break and mid-roll lookups, ad tracking pings and ad video streams
   - mutes, skips and fast-forwards any video ad that still plays, then restores sound and speed
   - hides leftover ad boxes
+- Smooth playback on slower devices: YouTube is only offered video formats the device decodes
+  in hardware (no software AV1/VP9), and "highest quality" stops at the screen's resolution.
+- Extensions can't open pages by themselves (welcome or "what's new" pages after installing or
+  updating); links you open from an extension's own pages still work.
 - Pages can show alerts, confirmations, `<select>` menus, HTTP sign-in and the share sheet.
 - Highest video quality: each video switches to the best quality offered (Premium-only
   levels are skipped; a quality you pick yourself is kept). Can be turned off in App settings.

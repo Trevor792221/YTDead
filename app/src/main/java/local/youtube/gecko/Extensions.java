@@ -87,7 +87,11 @@ final class Extensions {
         return GeckoApp.get().runtime().getWebExtensionController();
     }
 
-    /** Lets an extension open its settings page and new tabs (e.g. uBlock Origin's dashboard). */
+    /**
+     * Lets an extension open its settings page and new tabs (e.g. uBlock Origin's dashboard),
+     * but only from one of its own pages the user has open. Pages an extension opens by itself,
+     * like "Welcome" and "What's new" pages after installing or updating, are blocked.
+     */
     static void attach(Context context, WebExtension extension) {
         if (extension.isBuiltIn) {
             return;
@@ -95,7 +99,7 @@ final class Extensions {
         extension.setTabDelegate(new WebExtension.TabDelegate() {
             @Override
             public GeckoResult<GeckoSession> onNewTab(WebExtension source, WebExtension.CreateTabDetails details) {
-                if (details.url != null) {
+                if (details.url != null && userInExtensionPage()) {
                     openPage(details.url, source.metaData.name);
                 }
                 return null;
@@ -103,11 +107,15 @@ final class Extensions {
 
             @Override
             public void onOpenOptionsPage(WebExtension source) {
-                if (source.metaData.optionsPageUrl != null) {
+                if (source.metaData.optionsPageUrl != null && userInExtensionPage()) {
                     openPage(source.metaData.optionsPageUrl, source.metaData.name);
                 }
             }
         });
+    }
+
+    private static boolean userInExtensionPage() {
+        return GeckoApp.get().currentActivity() instanceof ExtensionPageActivity;
     }
 
     static void openPage(String url, String title) {

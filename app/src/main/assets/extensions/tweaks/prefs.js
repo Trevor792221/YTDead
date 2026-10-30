@@ -5,6 +5,9 @@ function apply(prefs) {
   const html = document.documentElement;
   html.setAttribute("data-ytdead-hq", prefs.highestQuality === false ? "0" : "1");
   html.setAttribute("data-ytdead-xfade", String(Number(prefs.crossfadeSeconds) || 0));
+  html.setAttribute("data-ytdead-av1", prefs.av1 === false ? "0" : "1");
+  html.setAttribute("data-ytdead-vp9", prefs.vp9 === false ? "0" : "1");
+  html.setAttribute("data-ytdead-maxh", String(Number(prefs.maxHeight) || 0));
 }
 
 browser.runtime.sendMessage({ type: "getPrefs" }).then((prefs) => apply(prefs || {}), () => apply({}));
