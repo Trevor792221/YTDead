@@ -33,6 +33,7 @@ public class LicensesActivity extends Activity {
     private static final int TEXT_DIM = 0xFFAAAAAA;
     private static final int CARD = 0xFF212121;
 
+    private static final String GPL = "GPL-3.0.txt";
     private static final String MPL = "MPL-2.0.txt";
     private static final String APACHE = "Apache-2.0.txt";
     private static final String GECKO_SOURCE = "https://archive.mozilla.org/pub/firefox/releases/159.0/source/";
@@ -59,6 +60,11 @@ public class LicensesActivity extends Activity {
     }
 
     private static final Component[] COMPONENTS = {
+        new Component("YTDead",
+                "Copyright (C) 2026 Trevor792221. Free software: you can share and change it under "
+                        + "the GNU GPL version 3, with an additional permission to combine it with "
+                        + "Google Play services. It comes with no warranty.",
+                "GNU General Public License 3.0", GPL, null, "https://github.com/Trevor792221/YTDead"),
         new Component("GeckoView 159",
                 "Mozilla's browser engine (the engine of Firefox for Android). Used unmodified.",
                 "Mozilla Public License 2.0", MPL, null, GECKO_SOURCE),
@@ -113,7 +119,7 @@ public class LicensesActivity extends Activity {
     private void showComponents(LinearLayout list) {
         setTitle("Open-source licenses");
         list.addView(heading("Open-source licenses", 22));
-        list.addView(body("YTDead is built on these components. Each is used under its license; tap "
+        list.addView(body("YTDead and the components it's built on, each under its license. Tap "
                 + "License for the full text and Source code for where to get it."));
 
         for (Component c : COMPONENTS) {
@@ -165,7 +171,8 @@ public class LicensesActivity extends Activity {
             finish();
             return;
         }
-        String name = file.startsWith("MPL") ? "Mozilla Public License 2.0" : "Apache License 2.0";
+        String name = file.startsWith("GPL") ? "GNU General Public License 3.0"
+                : file.startsWith("MPL") ? "Mozilla Public License 2.0" : "Apache License 2.0";
         setTitle(name);
         list.addView(heading(name, 22));
         TextView t = body(text);

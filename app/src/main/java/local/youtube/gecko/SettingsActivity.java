@@ -162,7 +162,8 @@ public class SettingsActivity extends Activity {
 
         mList.addView(heading("About", 18));
         try {
-            mList.addView(body("YTDead " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName));
+            mList.addView(body("YTDead " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName
+                    + ". Free software under the GNU GPL version 3."));
         } catch (android.content.pm.PackageManager.NameNotFoundException e) {
             // Can't happen for our own package.
         }
