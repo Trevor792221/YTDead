@@ -45,4 +45,31 @@ function check() {
   }
 }
 
-setInterval(check, 250);
+// Reacts the moment the player switches to an ad (its class changes) instead of polling;
+// while an ad shows, checks four times a second for the Skip button.
+let observed = null;
+let adTimer = null;
+
+function watch() {
+  const player = document.querySelector(".html5-video-player");
+  if (player && player !== observed) {
+    observed = player;
+    new MutationObserver(onChange).observe(player, { attributes: true, attributeFilter: ["class"] });
+    onChange();
+  }
+}
+
+function onChange() {
+  check();
+  if (inAd && !adTimer) {
+    adTimer = setInterval(() => {
+      check();
+      if (!inAd) {
+        clearInterval(adTimer);
+        adTimer = null;
+      }
+    }, 250);
+  }
+}
+
+setInterval(watch, 1000);

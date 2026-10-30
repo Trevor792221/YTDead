@@ -91,6 +91,12 @@
         </activity-alias>
 
         <activity
+            android:name=".LicensesActivity"
+            android:exported="false"
+            android:label="Open-source licenses"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode" />
+
+        <activity
             android:name=".ExtensionPageActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"

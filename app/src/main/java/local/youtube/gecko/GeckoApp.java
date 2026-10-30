@@ -61,6 +61,11 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                             .getBoolean(Extensions.PREF_SYSTEM_TEXT_SIZE, false))
                     .fontInflation(false)
                     .fontSizeFactor(1.0f)
+                    // An app, not a browser: no zooming by double tap or when a text box gets
+                    // focus, and no web-app manifest processing.
+                    .doubleTapZoomingEnabled(false)
+                    .inputAutoZoomEnabled(false)
+                    .webManifest(false)
                     .loginAutofillEnabled(true)
                     .consoleOutput(false)
                     .lowMemoryDetection(true)

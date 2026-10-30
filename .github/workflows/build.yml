@@ -1,6 +1,7 @@
 # TV version (the "tv" branch). Builds the APKs (arm32 for 32-bit Android, which most Android
-# TV devices run, and arm64 for newer TVs) on every push. Pushing a tag like tv-v3.2 also
-# publishes a GitHub Release with the signed APKs attached. The phone version lives on main.
+# TV devices run, and arm64 for newer TVs) on every push. A push with a version that has no
+# release yet (versionName in app/build.gradle) publishes GitHub Release tv-v<version> with the
+# signed APKs attached; so does pushing a tag like tv-v3.2. The phone version lives on main.
 #
 # Signing uses these repository secrets (Settings > Secrets and variables > Actions):
 #   KEYSTORE_BASE64    the release keystore, base64-encoded (base64 -w0 release.jks)
@@ -63,10 +64,27 @@ jobs:
           name: YTDead-TV-${{ env.VERSION }}
           path: YTDead-TV-*.apk
 
+      - name: Check for a release of this version
+        id: release
+        if: >-
+          github.event_name == 'push' && env.YTDEAD_KEYSTORE != '' &&
+          (github.ref == 'refs/heads/tv' || startsWith(github.ref, 'refs/tags/tv-v'))
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "tv-v$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/tv-v') && env.YTDEAD_KEYSTORE != ''
+        if: steps.release.outputs.new == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: tv-v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: YTDead TV ${{ env.VERSION }}
           files: YTDead-TV-*.apk
           # Not "latest": the README's download button on main gets the phone APK from there.
           make_latest: false

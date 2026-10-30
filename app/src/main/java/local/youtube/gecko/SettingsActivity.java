@@ -161,6 +161,18 @@ public class SettingsActivity extends Activity {
         row2.addView(button("Autofill service", false, v -> openAutofillSettings()));
         row2.addView(button("Passkey providers", false, v -> openPasskeySettings()));
         mList.addView(row2);
+
+        mList.addView(heading("About", 18));
+        try {
+            mList.addView(body("YTDead " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName
+                    + ". Free software under the GNU GPL version 3."));
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            // Can't happen for our own package.
+        }
+        LinearLayout row3 = buttonRow();
+        row3.addView(button("Open-source licenses", false,
+                v -> startActivity(new Intent(this, LicensesActivity.class))));
+        mList.addView(row3);
     }
 
     private View extensionCard(Extensions.Info info, WebExtension ext) {
