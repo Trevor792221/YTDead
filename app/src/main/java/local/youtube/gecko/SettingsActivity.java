@@ -143,6 +143,15 @@ public class SettingsActivity extends Activity {
                         + "in a notification.",
                 Extensions.PREF_BACKGROUND_PLAY));
 
+        if (!Device.isTv(this)) {
+            mList.addView(heading("Display", 18));
+            mList.addView(toggle("Use phone's text size",
+                    "Make YouTube's text follow the font size set in your phone's settings. Large "
+                            + "sizes can make text overlap icons.",
+                    Extensions.PREF_SYSTEM_TEXT_SIZE, false,
+                    on -> GeckoApp.get().runtime().getSettings().setAutomaticFontSizeAdjustment(on)));
+        }
+
         mList.addView(heading("Passwords and passkeys", 18));
         mList.addView(body("Sign-in forms use your phone's password manager (autofill service), and passkeys "
                 + "use your phone's passkey provider. If nothing is offered, check which ones are "
@@ -328,6 +337,11 @@ public class SettingsActivity extends Activity {
     }
 
     private View toggle(String title, String summary, String pref) {
+        return toggle(title, summary, pref, true, null);
+    }
+
+    private View toggle(String title, String summary, String pref, boolean defaultOn,
+                        java.util.function.Consumer<Boolean> onChange) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(0, dp(6), 0, dp(6));
@@ -335,8 +349,13 @@ public class SettingsActivity extends Activity {
         s.setText(title);
         s.setTextColor(TEXT);
         s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        s.setChecked(Extensions.prefs(this).getBoolean(pref, true));
-        s.setOnCheckedChangeListener((b, on) -> Extensions.prefs(this).edit().putBoolean(pref, on).apply());
+        s.setChecked(Extensions.prefs(this).getBoolean(pref, defaultOn));
+        s.setOnCheckedChangeListener((b, on) -> {
+            Extensions.prefs(this).edit().putBoolean(pref, on).apply();
+            if (onChange != null) {
+                onChange.accept(on);
+            }
+        });
         box.addView(s);
         TextView t = body(summary);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);

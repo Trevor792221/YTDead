@@ -42,6 +42,8 @@ YouTube app) in GeckoView, Firefox's browser engine for Android.
   - hides leftover ad boxes
 - Smooth playback on slower devices: YouTube is only offered video formats the device decodes
   in hardware (no software AV1/VP9), and "highest quality" stops at the screen's resolution.
+- Text keeps the size YouTube's pages are laid out for, so it doesn't run over icons. On phones,
+  *Use phone's text size* in App settings applies the phone's font size instead.
 - Extensions can't open pages by themselves (welcome or "what's new" pages after installing or
   updating); links you open from an extension's own pages still work.
 - Pages can show alerts, confirmations, `<select>` menus, HTTP sign-in and the share sheet.
