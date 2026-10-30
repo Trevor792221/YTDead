@@ -67,6 +67,13 @@
             android:resizeableActivity="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|layoutDirection" />
 
+        <activity
+            android:name=".LicensesActivity"
+            android:exported="false"
+            android:label="Open-source licenses"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|layoutDirection" />
+
         <service
             android:name=".PlaybackService"
             android:exported="false"
