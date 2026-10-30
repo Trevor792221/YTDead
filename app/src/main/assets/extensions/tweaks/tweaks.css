@@ -87,3 +87,40 @@ yt-button-shape:has(> a[href^="intent:"]),
 ytmusic-button-renderer:has(a[href^="https://app.music.youtube.com"]) {
   display: none !important;
 }
+
+/* Like / Dislike in YouTube Music's player bar (likes.js). */
+.ytdead-rating {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 4px;
+  margin: 0 4px;
+}
+.ytdead-rate {
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ytdead-rate:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+/* Like / Dislike beside the title on the full player page. */
+.ytdead-has-rating {
+  position: relative;
+  padding-right: 96px;
+  box-sizing: border-box;
+}
+.ytdead-rating-page {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+}
