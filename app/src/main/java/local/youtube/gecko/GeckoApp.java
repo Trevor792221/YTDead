@@ -162,6 +162,9 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                     }
                     return GeckoResult.fromValue(true);
                 case "getPrefs":
+                    // Shown in App settings: proof the page helper can reach the app.
+                    Extensions.prefs(GeckoApp.this).edit()
+                            .putLong("helper_contact", System.currentTimeMillis()).apply();
                     try {
                         return GeckoResult.fromValue(new JSONObject()
                                 .put("highestQuality", Extensions.prefs(GeckoApp.this)

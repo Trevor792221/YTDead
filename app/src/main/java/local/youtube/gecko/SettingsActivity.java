@@ -311,14 +311,22 @@ public class SettingsActivity extends Activity {
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         box.addView(t);
         String last = Extensions.prefs(this).getString("status_crossfade", null);
+        long contact = Extensions.prefs(this).getLong("helper_contact", 0);
+        String text;
         if (last != null) {
             long when = Extensions.prefs(this).getLong("status_time_crossfade", 0);
-            TextView status = body("Last song change: " + last + " ("
-                    + android.text.format.DateUtils.getRelativeTimeSpanString(when) + ")");
-            status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-            status.setTextColor(0xFF3EA6FF);
-            box.addView(status);
+            text = "Last song change: " + last + " ("
+                    + android.text.format.DateUtils.getRelativeTimeSpanString(when) + ")";
+        } else if (contact > 0) {
+            text = "No song change seen yet. Let a song in the Music tab play to its end. (Page helper "
+                    + "connected " + android.text.format.DateUtils.getRelativeTimeSpanString(contact) + ")";
+        } else {
+            text = "The page helper hasn't reached the app yet: open the Music tab, then check here again.";
         }
+        TextView status = body(text);
+        status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        status.setTextColor(0xFF3EA6FF);
+        box.addView(status);
         box.setOnClickListener(v -> {
             String[] labels = new String[CROSSFADE_CHOICES.length];
             int checked = 0;

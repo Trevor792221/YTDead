@@ -64,7 +64,8 @@
             android:exported="true"
             android:label="@string/settings_title"
             android:taskAffinity=""
-            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode" />
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|layoutDirection" />
 
         <service
             android:name=".PlaybackService"
@@ -75,6 +76,7 @@
             android:name=".ExtensionPageActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
-            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode" />
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|layoutDirection" />
     </application>
 </manifest>

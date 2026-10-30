@@ -400,6 +400,18 @@ public class MainActivity extends Activity {
         }
     }
 
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Folding, unfolding and window resizing: the page re-lays itself out as GeckoView
+        // resizes; refresh the app's own padding and bars for the new size.
+        if (mFullScreen && newConfig.smallestScreenWidthDp >= 600) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        }
+        updateTabBarVisibility();
+        mRoot.requestApplyInsets();
+    }
+
     private static String urlFromIntent(Intent intent) {
         if (intent == null) {
             return null;
@@ -482,7 +494,11 @@ public class MainActivity extends Activity {
         }
         if (fullScreen) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            // Phones turn to landscape for full-screen video; large screens (unfolded foldables,
+            // tablets) already have room, so they keep whatever orientation they're in.
+            if (getResources().getConfiguration().smallestScreenWidthDp < 600) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            }
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);

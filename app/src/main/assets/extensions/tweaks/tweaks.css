@@ -59,3 +59,31 @@ ytmusic-statement-banner-renderer {
     display: none !important;
   }
 }
+
+/* YouTube's player has two screen-reader buttons, "Rewind 10 seconds" and "Fast forward 10
+   seconds", meant to stay invisible. On some phones they're drawn as big circles on top of
+   Previous/Next. Keep them invisible (still usable by screen readers). */
+.ytwPlayerMiddleControlsA11ySeekButton,
+.ytmA11yStylesHiddenButton {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* "Open App" buttons: links that open the official YouTube / YouTube Music apps. */
+a[href^="intent:"],
+a[href^="https://app.music.youtube.com"],
+a[href^="https://app.youtube.com"],
+ytm-button-renderer:has(> a[href^="intent:"]),
+yt-button-shape:has(> a[href^="intent:"]),
+ytmusic-button-renderer:has(a[href^="https://app.music.youtube.com"]) {
+  display: none !important;
+}

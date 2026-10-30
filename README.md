@@ -6,6 +6,8 @@ An Android app that shows YouTube's mobile site (`m.youtube.com`, laid out like 
 YouTube app) in GeckoView, Firefox's browser engine for Android.
 
 - No browser UI: full screen YouTube with a dark theme.
+- Foldables and resizable windows: the app adapts when unfolded, folded or resized without
+  restarting, and only turns full-screen video to landscape on phone-sized screens.
 - Two tabs, **YouTube** and **Music** (YouTube Music), switched from the bar at the top. Each
   keeps its own page and history; both share sign-in, extensions, ad removal, background
   playback and the media notification. Starting playback in one tab pauses the other. Links to

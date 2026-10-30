@@ -10,7 +10,11 @@ function apply(prefs) {
   html.setAttribute("data-ytdead-maxh", String(Number(prefs.maxHeight) || 0));
 }
 
-browser.runtime.sendMessage({ type: "getPrefs" }).then((prefs) => apply(prefs || {}), () => apply({}));
+// If the app can't be reached, use the defaults rather than turning features off.
+const DEFAULTS = { highestQuality: true, crossfadeSeconds: 6 };
+browser.runtime.sendMessage({ type: "getPrefs" }).then(
+  (prefs) => apply(prefs && typeof prefs === "object" ? prefs : DEFAULTS),
+  () => apply(DEFAULTS));
 
 // Status lines for App settings from page scripts (crossfade.js), passed on to the app.
 window.addEventListener("ytdead-status", (event) => {

@@ -1,31 +1,51 @@
-// YouTube Music clean-ups: hide "Open App" in its menu. ads-page.js already removes it from the
-// menu's data; this catches any that get drawn anyway, by where they link (so it works in every
-// language), falling back to the English label.
+// YouTube Music clean-ups: hide "Open App" (in the menu, and in the top bar when signed in).
+// ads-page.js already removes the menu entry from YouTube Music's data and tweaks.css hides
+// links to the app; this catches the rest, by where they link (any language) or by their label.
 "use strict";
 
-const OPEN_APP_URL = /^https?:\/\/app\.(music\.)?youtube\.com/;
+const OPEN_APP_URL = /^(https?:\/\/app\.(music\.)?youtube\.com|intent:)/;
+const OPEN_APP_LABEL = /^(open app|open in app|get the app)$/i;
 
-function isOpenApp(entry) {
+function linksToApp(el) {
   try {
-    const data = entry.wrappedJSObject && entry.wrappedJSObject.data;
-    const url = data && data.navigationEndpoint && data.navigationEndpoint.urlEndpoint
-      && data.navigationEndpoint.urlEndpoint.url;
-    if (typeof url === "string") {
-      return OPEN_APP_URL.test(url);
+    const data = el.wrappedJSObject && el.wrappedJSObject.data;
+    const endpoint = data && (data.navigationEndpoint || data.command);
+    const url = endpoint && endpoint.urlEndpoint && endpoint.urlEndpoint.url;
+    if (typeof url === "string" && OPEN_APP_URL.test(url)) {
+      return true;
     }
   } catch (e) {
-    // Page data not readable: use the label.
+    // Page data not readable.
   }
-  return /^open app$/i.test((entry.textContent || "").trim());
+  const a = el.matches("a") ? el : el.querySelector("a[href]");
+  return !!(a && OPEN_APP_URL.test(a.getAttribute("href") || ""));
 }
 
 function hideOpenApp() {
-  for (const entry of document.querySelectorAll("ytmusic-guide-entry-renderer")) {
-    if (entry.style.display !== "none" && isOpenApp(entry)) {
-      entry.style.display = "none";
+  const candidates = document.querySelectorAll(
+    "ytmusic-guide-entry-renderer, ytmusic-nav-bar ytmusic-button-renderer, "
+    + "ytmusic-nav-bar yt-button-renderer, ytmusic-nav-bar yt-button-shape, ytmusic-nav-bar a, "
+    + "ytmusic-nav-bar button");
+  for (const el of candidates) {
+    if (el.style.display === "none") {
+      continue;
+    }
+    if (linksToApp(el) || OPEN_APP_LABEL.test((el.textContent || "").trim())) {
+      const host = el.closest("ytmusic-guide-entry-renderer, ytmusic-button-renderer, yt-button-renderer") || el;
+      host.style.display = "none";
     }
   }
 }
 
-new MutationObserver(hideOpenApp).observe(document.documentElement, { childList: true, subtree: true });
+// YouTube Music changes the page constantly; check at most a few times a second.
+let pending = false;
+new MutationObserver(() => {
+  if (!pending) {
+    pending = true;
+    setTimeout(() => {
+      pending = false;
+      hideOpenApp();
+    }, 250);
+  }
+}).observe(document.documentElement, { childList: true, subtree: true });
 hideOpenApp();
