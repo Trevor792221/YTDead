@@ -1,5 +1,7 @@
 # YTDead
 
+<a href="https://github.com/Trevor792221/YTDead/releases/latest/download/YTDead.apk"><img src="https://img.shields.io/badge/Download-APK%20for%20Android-FF0033?style=for-the-badge&logo=android&logoColor=white" alt="Download APK for Android" height="40"></a>
+
 YouTube for Android without the ads. Not affiliated with YouTube or Google.
 
 An Android app that shows YouTube's mobile site (`m.youtube.com`, laid out like the
@@ -65,8 +67,8 @@ passkey bridge, ad removal, the settings button, background play and banner hidi
 
 ## Install
 
-Download the APK from [Releases](../../releases), open it on your phone and allow
-"Install unknown apps" when Android asks.
+Tap **Download APK** at the top (or get it from [Releases](../../releases)), open it on your
+phone and allow "Install unknown apps" when Android asks.
 
 ## Build
 

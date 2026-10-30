@@ -57,6 +57,9 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "YTDead-$version.apk"
           echo "APK=YTDead-$version.apk" >> "$GITHUB_ENV"
           echo "VERSION=$version" >> "$GITHUB_ENV"
+          # Same APK under a fixed name, for the README's download button
+          # (releases/latest/download/YTDead.apk).
+          cp "YTDead-$version.apk" YTDead.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -84,5 +87,8 @@ jobs:
           tag_name: v${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
           name: YTDead ${{ env.VERSION }}
-          files: ${{ env.APK }}
+          files: |
+            ${{ env.APK }}
+            YTDead.apk
+          make_latest: true
           generate_release_notes: true
