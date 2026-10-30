@@ -202,9 +202,8 @@ public class MainActivity extends Activity {
 
     // --- Tab bar: hides by itself, comes back when scrolling up ---------------------------
     // Shown at start and whenever you scroll up (drag down) anywhere; hides after a few
-    // seconds or when you scroll down. It slides over the page like Firefox's address bar
-    // (GeckoView's "dynamic toolbar"): the page is laid out once for the space below the bar
-    // and is moved, not resized, so showing and hiding it doesn't make YouTube re-lay out.
+    // seconds or when you scroll down. The page keeps its full size and is moved down under
+    // the bar, not resized, so showing and hiding it doesn't make YouTube re-lay out.
 
     private static final long BAR_HIDE_DELAY_MS = 3000;
     private static final long BAR_ANIMATION_MS = 180;
@@ -212,7 +211,6 @@ public class MainActivity extends Activity {
     private int mBarHeight;
     /** 1 = fully shown, 0 = hidden. */
     private float mBarFraction = 1;
-    private int mToolbarMaxHeight = -1;
     private ValueAnimator mBarAnimator;
     private final Runnable mHideBar = this::hideBar;
     private float mTouchStartX;
@@ -229,16 +227,12 @@ public class MainActivity extends Activity {
         float shown = allowed ? mBarFraction * mBarHeight : 0;
         mTabBar.setTranslationY(shown - mBarHeight);
         mTabBar.setVisibility(shown > 0 ? View.VISIBLE : View.INVISIBLE);
-        int maxHeight = allowed ? mBarHeight : 0;
-        if (maxHeight != mToolbarMaxHeight) {
-            mToolbarMaxHeight = maxHeight;
-            mView.setDynamicToolbarMaxHeight(maxHeight);
-        }
         if (mFrozenWidth == 0) {
             mView.setTranslationY(shown);
         }
-        // How far the bar has slid away: the page's fixed bottom bar moves down by as much.
-        mView.setVerticalClipping(Math.round(maxHeight - shown));
+        // The page is pushed down by the visible part of the bar, so that much of its bottom is
+        // off screen: lift YouTube's fixed bottom bar (Home / Shorts / You) by as much.
+        mView.setVerticalClipping(Math.round(shown));
     }
 
     private void showBar() {
