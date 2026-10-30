@@ -141,6 +141,26 @@ public class MainActivity extends Activity {
             bar.addView(chip, lp);
             mTabButtons[i] = chip;
         }
+
+        // App settings, next to the tabs.
+        TextView settings = new TextView(this);
+        settings.setText("Settings");
+        settings.setContentDescription("App settings");
+        settings.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        settings.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        settings.setTextColor(0xFFF1F1F1);
+        settings.setGravity(Gravity.CENTER);
+        settings.setPadding(dp(12), 0, dp(16), 0);
+        android.graphics.drawable.Drawable gear = getDrawable(R.drawable.ic_settings);
+        gear.setBounds(0, 0, dp(18), dp(18));
+        settings.setCompoundDrawablesRelative(gear, null, null, null);
+        settings.setCompoundDrawablePadding(dp(6));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(8));
+        bg.setColor(0xFF272727);
+        settings.setBackground(bg);
+        settings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
+        bar.addView(settings, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(32)));
         return bar;
     }
 
