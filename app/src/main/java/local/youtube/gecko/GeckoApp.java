@@ -176,6 +176,13 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                     } catch (org.json.JSONException e) {
                         return null;
                     }
+                case "status":
+                    // Shown in App settings, e.g. what the crossfade last did.
+                    Extensions.prefs(GeckoApp.this).edit()
+                            .putString("status_" + msg.optString("key"), msg.optString("text"))
+                            .putLong("status_time_" + msg.optString("key"), System.currentTimeMillis())
+                            .apply();
+                    return GeckoResult.fromValue(true);
                 case "webauthn":
                     return Passkeys.handle(mCurrentActivity, msg);
                 default:

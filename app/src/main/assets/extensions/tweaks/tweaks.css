@@ -50,3 +50,12 @@ ytmusic-mealbar-promo-renderer,
 ytmusic-statement-banner-renderer {
   display: none !important;
 }
+
+/* Picture-in-picture: the page is full screen and tiny. Android doesn't pass taps through to it,
+   so YouTube's own controls would be unusable duplicates of the window's buttons: show only the
+   video. */
+@media (max-height: 300px) {
+  :fullscreen *:not(video):not(:has(video)) {
+    display: none !important;
+  }
+}

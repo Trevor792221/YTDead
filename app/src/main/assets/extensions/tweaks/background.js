@@ -6,6 +6,11 @@ browser.runtime.onMessage.addListener((msg, sender) => {
   if (msg?.type === "openSettings" || msg?.type === "getPrefs") {
     return browser.runtime.sendNativeMessage("ytgecko", { type: msg.type });
   }
+  if (msg?.type === "status") {
+    return browser.runtime.sendNativeMessage("ytgecko", {
+      type: "status", key: String(msg.key).slice(0, 40), text: String(msg.text).slice(0, 200),
+    });
+  }
   if (msg?.type === "webauthn") {
     return webauthn(msg, sender);
   }

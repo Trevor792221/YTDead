@@ -15,7 +15,8 @@ YouTube app) in GeckoView, Firefox's browser engine for Android.
   song in the queue starts in a hidden second YouTube Music player and the two are faded across
   each other; YouTube Music then moves on to that song and takes over from the hidden player.
   Length (3-12 seconds) or off in App settings. Falls back to a plain fade if the second
-  player isn't ready; seeking back, skipping, ads and repeat-one cancel it.
+  player isn't ready or you seek into the last seconds; a song you skip to fades in quickly.
+  Seeking back, ads and repeat-one cancel it. App settings shows what it last did.
 - **App settings** (long-press the app icon → *Extensions & settings*, or the
   *App settings* button on YouTube's *You* page; it also opens on first launch):
   - install, update, turn on/off, remove and configure uBlock Origin, SponsorBlock,
@@ -48,7 +49,7 @@ YouTube app) in GeckoView, Firefox's browser engine for Android.
   10 seconds when there is no next video), a seek bar, lock-screen controls, headset buttons,
   and pausing when headphones are unplugged or a call comes in. Can be turned off in App settings.
 - Full-screen videos go landscape; Home during a full-screen video switches to
-  picture-in-picture.
+  picture-in-picture, which shows just the video with Android's play/pause and skip buttons.
 - YouTube links (and *Share → YouTube*) can open in the app. Other links open in your browser.
 
 The app's own helper extension (`app/src/main/assets/extensions/tweaks`) provides the

@@ -11,3 +11,13 @@ function apply(prefs) {
 }
 
 browser.runtime.sendMessage({ type: "getPrefs" }).then((prefs) => apply(prefs || {}), () => apply({}));
+
+// Status lines for App settings from page scripts (crossfade.js), passed on to the app.
+window.addEventListener("ytdead-status", (event) => {
+  try {
+    const { key, text } = JSON.parse(event.detail);
+    browser.runtime.sendMessage({ type: "status", key: String(key), text: String(text) }).catch(() => {});
+  } catch (e) {
+    // Malformed: ignore.
+  }
+});

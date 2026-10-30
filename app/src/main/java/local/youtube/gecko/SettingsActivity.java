@@ -310,6 +310,15 @@ public class SettingsActivity extends Activity {
                 + "fades out, without the usual pause between tracks.");
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         box.addView(t);
+        String last = Extensions.prefs(this).getString("status_crossfade", null);
+        if (last != null) {
+            long when = Extensions.prefs(this).getLong("status_time_crossfade", 0);
+            TextView status = body("Last song change: " + last + " ("
+                    + android.text.format.DateUtils.getRelativeTimeSpanString(when) + ")");
+            status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            status.setTextColor(0xFF3EA6FF);
+            box.addView(status);
+        }
         box.setOnClickListener(v -> {
             String[] labels = new String[CROSSFADE_CHOICES.length];
             int checked = 0;

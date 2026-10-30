@@ -3,21 +3,25 @@ package local.youtube.gecko;
 import android.app.Activity;
 import android.app.PictureInPictureParams;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Rational;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
-import android.view.Gravity;
 import android.view.WindowManager;
-import android.graphics.drawable.GradientDrawable;
-import android.util.TypedValue;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.window.OnBackInvokedDispatcher;
@@ -82,6 +86,14 @@ public class MainActivity extends Activity {
         setContentView(mRoot);
         mRoot.setOnApplyWindowInsetsListener(this::applyInsets);
         setFullScreen(false);
+
+        IntentFilter pipFilter = new IntentFilter(PIP_ACTION);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(mPipReceiver, pipFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(mPipReceiver, pipFilter);
+        }
+        Playback.addListener(mPipUpdater);
 
         String url = urlFromIntent(getIntent());
         open(url != null ? tabFor(Uri.parse(url), TAB_YOUTUBE) : TAB_YOUTUBE, url);
@@ -260,6 +272,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        unregisterReceiver(mPipReceiver);
+        Playback.removeListener(mPipUpdater);
         mView.releaseSession();
         for (int i = 0; i < mSessions.length; i++) {
             if (mSessions[i] != null) {
@@ -294,11 +308,87 @@ public class MainActivity extends Activity {
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
         // Leaving the app while a video is full screen shrinks it to picture-in-picture.
-        if (mFullScreen) {
-            enterPictureInPictureMode(new PictureInPictureParams.Builder()
-                    .setAspectRatio(new Rational(16, 9))
-                    .build());
+        if (mFullScreen && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+            try {
+                enterPictureInPictureMode(pipParams());
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "Picture-in-picture not available", e);
+            }
         }
+    }
+
+    // --- Picture-in-picture buttons ----------------------------------------------------
+    // Android doesn't pass taps through to the page in the pop-up window, so YouTube's own
+    // controls are hidden there (tweaks.css) and the window gets Android's buttons instead.
+
+    private static final String PIP_ACTION = "local.youtube.gecko.PIP";
+    private static final String PIP_COMMAND = "command";
+
+    private final BroadcastReceiver mPipReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            switch (String.valueOf(intent.getStringExtra(PIP_COMMAND))) {
+                case "play_pause":
+                    if (Playback.playing) {
+                        Playback.pause();
+                    } else {
+                        Playback.play();
+                    }
+                    break;
+                case "previous":
+                    Playback.previous();
+                    break;
+                case "next":
+                    Playback.next();
+                    break;
+                case "rewind":
+                    Playback.seekBy(-10);
+                    break;
+                case "forward":
+                    Playback.seekBy(10);
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
+
+    private final Playback.Listener mPipUpdater = () -> {
+        if (isInPictureInPictureMode()) {
+            setPictureInPictureParams(pipParams());
+        }
+    };
+
+    private PictureInPictureParams pipParams() {
+        boolean previous = Playback.has(org.mozilla.geckoview.MediaSession.Feature.PREVIOUS_TRACK);
+        boolean next = Playback.has(org.mozilla.geckoview.MediaSession.Feature.NEXT_TRACK);
+        java.util.List<android.app.RemoteAction> actions = new java.util.ArrayList<>();
+        actions.add(previous
+                ? pipAction(android.R.drawable.ic_media_previous, R.string.previous, "previous")
+                : pipAction(R.drawable.ic_replay_10, R.string.rewind_10, "rewind"));
+        actions.add(Playback.playing
+                ? pipAction(android.R.drawable.ic_media_pause, R.string.pause, "play_pause")
+                : pipAction(android.R.drawable.ic_media_play, R.string.play, "play_pause"));
+        actions.add(next
+                ? pipAction(android.R.drawable.ic_media_next, R.string.next, "next")
+                : pipAction(R.drawable.ic_forward_10, R.string.forward_10, "forward"));
+        int max = getMaxNumPictureInPictureActions();
+        if (actions.size() > max) {
+            // Keep play/pause if the system allows fewer buttons.
+            actions = max <= 1 ? actions.subList(1, 2) : actions.subList(0, max);
+        }
+        return new PictureInPictureParams.Builder()
+                .setAspectRatio(new Rational(16, 9))
+                .setActions(actions)
+                .build();
+    }
+
+    private android.app.RemoteAction pipAction(int icon, int label, String command) {
+        Intent intent = new Intent(PIP_ACTION).setPackage(getPackageName()).putExtra(PIP_COMMAND, command);
+        android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(this, command.hashCode(), intent,
+                android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+        return new android.app.RemoteAction(android.graphics.drawable.Icon.createWithResource(this, icon),
+                getString(label), getString(label), pi);
     }
 
     @Override

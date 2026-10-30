@@ -10,8 +10,10 @@
 //      queue, likes and history stay right). It's muted, jumped to where the hidden player
 //      is, and the two swap over in a fraction of a second; then the frame is removed.
 //
-// If the hidden player isn't ready in time, the current song just fades out and the next fades
-// in. Seeking back, skipping by hand, ads and repeat-one cancel the crossfade.
+// If the hidden player isn't ready in time (or you seek into the last seconds), the current song
+// just fades out and the next fades in. A song you skip to fades in quickly. Seeking back,
+// skipping by hand, ads and repeat-one cancel the crossfade. What happened last is shown in App
+// settings.
 (() => {
   "use strict";
   if (window.top !== window) {
@@ -24,6 +26,7 @@
   const SWAP_MS = 400; // final hand-over from the hidden player
   const HANDOVER_TIMEOUT_MS = 8000;
   const SEEK_LEAD = 0.25; // seeking takes a moment; aim a little ahead
+  const SKIP_FADE_IN = 3; // seconds: fade-in for a song you skipped to
 
   // Set by prefs.js from App settings: fade length in seconds, "0" when off.
   const fadeSeconds = () => Number(document.documentElement.getAttribute("data-ytdead-xfade")) || 0;
@@ -38,8 +41,22 @@
   let handoverStart = 0;
   let swapStart = 0;
   let fadeInPlayed = 0;
+  let fadeInMs = 0;
+  let reported = null; // last status sent, so each is sent once per song
   let seekTarget = null;
   let lastTick = performance.now();
+
+  // Tells App settings what the crossfade last did (via prefs.js, which can message the app).
+  function report(text) {
+    const key = trackId + "|" + text;
+    if (key === reported) {
+      return;
+    }
+    reported = key;
+    window.dispatchEvent(new CustomEvent("ytdead-status", {
+      detail: JSON.stringify({ key: "crossfade", text }),
+    }));
+  }
 
   function mainPlayer() {
     const p = document.getElementById("movie_player");
@@ -169,18 +186,45 @@
 
     switch (phase) {
       case "idle": {
+        if (trackId !== null && id && id !== trackId && video.currentTime < 2 && video.volume > 0) {
+          // Moved to another song without a crossfade (skipped): a short fade-in.
+          baseVolume = video.volume;
+          video.volume = 0;
+          fadeInPlayed = 0;
+          fadeInMs = Math.min(fade, SKIP_FADE_IN) * 1000;
+          handoverStart = now;
+          phase = "fadein"; // with trackId still the old song, so it starts right away
+          return;
+        }
         trackId = id;
         const d = video.duration;
-        if (!Number.isFinite(d) || d < fade * 2 + PRELOAD || video.paused || repeatOne()) {
+        if (!Number.isFinite(d) || video.paused) {
           return;
         }
         const remaining = d - video.currentTime;
-        if (remaining <= fade + PRELOAD && remaining > fade) {
-          const next = queueNext();
-          if (next && next !== id) {
-            baseVolume = video.volume;
-            startPreload(next);
-          }
+        if (remaining > fade + PRELOAD) {
+          return;
+        }
+        if (d < fade * 2 + PRELOAD) {
+          report("Not crossfading: the song is too short");
+          return;
+        }
+        if (repeatOne()) {
+          report("Not crossfading: repeat one is on");
+          return;
+        }
+        const next = queueNext();
+        if (!next || next === id) {
+          report("Not crossfading: no next song in the queue");
+          return;
+        }
+        baseVolume = video.volume;
+        if (remaining > fade) {
+          startPreload(next);
+        } else if (remaining > ADVANCE_AT + 0.5) {
+          // Seeked into the last seconds: no time to load the next song, so just fade.
+          nextId = next;
+          phase = "fading";
         }
         return;
       }
@@ -245,6 +289,7 @@
           handoverStart = now;
           phase = fv ? "handover" : "fadein";
           fadeInPlayed = 0;
+          fadeInMs = fade * 1000;
           if (phase === "fadein") {
             removeFrame();
           }
@@ -257,6 +302,7 @@
         const fv = frameVideo();
         if (!fv || now - handoverStart > HANDOVER_TIMEOUT_MS) {
           // The hidden player went away or this took too long: just carry on with the main one.
+          report("Faded into the next song (the overlap didn't line up)");
           reset(video);
           return;
         }
@@ -298,6 +344,7 @@
           trackId = id;
           nextId = null;
           seekTarget = null;
+          report("Crossfaded into the next song");
         }
         return;
       }
@@ -315,11 +362,14 @@
         if (!video.paused) {
           fadeInPlayed += dt;
         }
-        const x = fadeInPlayed / (fade * 1000);
+        const x = fadeInPlayed / fadeInMs;
         video.volume = baseVolume * curve(x);
         if (x >= 1) {
           video.volume = baseVolume;
           phase = "idle";
+          if (fadeInMs >= fade * 1000) {
+            report("Faded into the next song (it wasn't ready to overlap)");
+          }
           trackId = id;
         }
         return;
