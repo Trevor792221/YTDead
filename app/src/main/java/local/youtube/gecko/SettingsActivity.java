@@ -133,6 +133,26 @@ public class SettingsActivity extends Activity {
         auto.setPadding(0, dp(8), 0, dp(8));
         mList.addView(auto);
 
+        // Any other add-on, chosen by you.
+        mList.addView(heading("Your add-ons", 18));
+        mList.addView(body("Add any add-on made for Firefox for Android. Only add ones you trust: "
+                + "add-ons can see and change the pages you visit."));
+        for (WebExtension ext : installed) {
+            if (!ext.isBuiltIn && Extensions.find(ext.id) == null) {
+                String description = ext.metaData.description != null ? ext.metaData.description : "";
+                mList.addView(extensionCard(new Extensions.Info(ext.id, null,
+                        ext.metaData.name != null ? ext.metaData.name : ext.id, description, null, false), ext));
+            }
+        }
+        LinearLayout addRow = buttonRow();
+        addRow.addView(button("Get add-ons", true, v -> startActivity(
+                new Intent(this, ExtensionPageActivity.class)
+                        .putExtra(ExtensionPageActivity.EXTRA_URL, Extensions.ADDONS_SITE)
+                        .putExtra(ExtensionPageActivity.EXTRA_TITLE, "Add-ons")
+                        .putExtra(ExtensionPageActivity.EXTRA_STORE, true))));
+        addRow.addView(button("Add from link", false, v -> addFromLink()));
+        mList.addView(addRow);
+
         mList.addView(heading("Playback", 18));
         mList.addView(toggle("Highest video quality",
                 "Always start videos at the best quality available, instead of the size the player picks.",
@@ -242,6 +262,45 @@ public class SettingsActivity extends Activity {
         rowScroll.addView(row);
         card.addView(rowScroll);
         return card;
+    }
+
+    /** Paste an addons.mozilla.org link (or an add-on's name from one) to install it. */
+    private void addFromLink() {
+        android.widget.EditText input = new android.widget.EditText(this);
+        input.setHint("addons.mozilla.org/…/addon/…");
+        input.setSingleLine(true);
+        input.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        android.content.ClipboardManager clipboard = getSystemService(android.content.ClipboardManager.class);
+        if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.getPrimaryClip().getItemCount() > 0) {
+            CharSequence copied = clipboard.getPrimaryClip().getItemAt(0).getText();
+            if (copied != null && Extensions.downloadFor(copied.toString()) != null
+                    && copied.toString().contains("addons.mozilla.org")) {
+                input.setText(copied); // a link you just copied
+            }
+        }
+        android.widget.FrameLayout box = new android.widget.FrameLayout(this);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        box.addView(input);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Add from link")
+                .setMessage("Paste the link to an add-on's page on addons.mozilla.org.")
+                .setView(box)
+                .setPositiveButton("Add", (d, w) -> {
+                    String url = Extensions.downloadFor(input.getText().toString());
+                    if (url == null) {
+                        toast("That isn't a link to an add-on.");
+                        return;
+                    }
+                    toast("Getting the add-on…");
+                    Extensions.installFromUrl(url).accept(
+                            ext -> {
+                                toast(ext.metaData.name + " added.");
+                                refresh();
+                            },
+                            e -> toast("The add-on wasn't added. Check the link and your connection."));
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void install(Extensions.Info info) {

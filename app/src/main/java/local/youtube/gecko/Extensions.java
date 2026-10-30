@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.util.Log;
 
 import org.mozilla.geckoview.GeckoResult;
@@ -49,12 +50,10 @@ final class Extensions {
                 "popup.html", true),
         new Info("{762f9885-5a13-4abd-9c77-433dcd38b8fd}", "return-youtube-dislikes",
                 "Return YouTube Dislike", "Shows dislike counts again.", "popup.html", true),
-        new Info("{446900e4-71c2-419f-a6a7-df9c091e268b}", "bitwarden-password-manager",
-                "Bitwarden", "Fills passwords from your Bitwarden vault. Use Open to sign in to Bitwarden. "
-                        + "Made for desktop Firefox, so some features may not work here; the Bitwarden "
-                        + "Android app also fills sign-in forms in YTDead.",
-                "popup/index.html", false),
     };
+
+    /** Where "Get add-ons" goes: the add-ons that work in Firefox for Android. */
+    static final String ADDONS_SITE = "https://addons.mozilla.org/android/";
 
     static final String PREFS = "settings";
     static final String PREF_AUTO_UPDATE = "auto_update";
@@ -134,13 +133,144 @@ final class Extensions {
         return controller().install(info.downloadUrl(), WebExtensionController.INSTALLATION_METHOD_MANAGER);
     }
 
-    /** Checks every installed extension from the catalog; resolves to the number updated. */
+    /** An add-on's install file (.xpi), e.g. behind addons.mozilla.org's "Add to Firefox". */
+    static boolean isAddonFile(String url) {
+        if (url == null || !url.startsWith("https://")) {
+            return false;
+        }
+        String path = url.replaceFirst("[?#].*$", "");
+        return path.endsWith(".xpi")
+                || path.startsWith("https://addons.mozilla.org/firefox/downloads/");
+    }
+
+    /**
+     * The install file for what someone pasted: an addons.mozilla.org page link, an add-on's
+     * name from such a link, or a link straight to an .xpi file. Null if it isn't one of those.
+     */
+    static String downloadFor(String text) {
+        String t = text == null ? "" : text.trim();
+        if (isAddonFile(t)) {
+            return t;
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("addons\\.mozilla\\.org/(?:[^/]+/)*addon/([^/?#]+)").matcher(t);
+        String slug = m.find() ? m.group(1) : t.matches("[A-Za-z0-9._@{}-]+") ? t : null;
+        return slug == null ? null
+                : "https://addons.mozilla.org/firefox/downloads/latest/" + Uri.encode(slug) + "/latest.xpi";
+    }
+
+    /** Installs an add-on you picked yourself; you're asked to confirm what it can access first. */
+    static GeckoResult<WebExtension> installFromUrl(String url) {
+        return controller().install(url, WebExtensionController.INSTALLATION_METHOD_MANAGER);
+    }
+
+    /**
+     * Asks before installing an add-on that isn't one of the app's own choices, showing what it
+     * will be able to access. Resolves to the answer (no if nothing is on screen to ask).
+     */
+    static GeckoResult<WebExtension.PermissionPromptResponse> confirmInstall(
+            WebExtension extension, String[] permissions, String[] origins) {
+        GeckoResult<WebExtension.PermissionPromptResponse> result = new GeckoResult<>();
+        WebExtension.PermissionPromptResponse no = new WebExtension.PermissionPromptResponse(false, false, false);
+        Activity activity = GeckoApp.get().currentActivity();
+        if (activity == null || activity.isFinishing()) {
+            result.complete(no);
+            return result;
+        }
+        StringBuilder message = new StringBuilder();
+        java.util.Set<String> can = new java.util.LinkedHashSet<>();
+        for (String p : permissions == null ? new String[0] : permissions) {
+            String described = describePermission(p);
+            if (described != null) {
+                can.add(described);
+            }
+        }
+        boolean allSites = false;
+        java.util.Set<String> sites = new java.util.LinkedHashSet<>();
+        for (String o : origins == null ? new String[0] : origins) {
+            if (o.equals("<all_urls>") || o.matches("\\*://\\*/.*") || o.matches("https?://\\*/.*")) {
+                allSites = true;
+            } else {
+                sites.add(o.replaceFirst("^[^:]*://", "").replaceFirst("/.*$", ""));
+            }
+        }
+        if (allSites) {
+            can.add("Read and change everything on every website");
+        } else if (!sites.isEmpty()) {
+            can.add("Read and change pages on " + String.join(", ", sites));
+        }
+        if (can.isEmpty()) {
+            message.append("It doesn't ask for any special access.");
+        } else {
+            message.append("It will be able to:");
+            for (String line : can) {
+                message.append("\n• ").append(line);
+            }
+        }
+        message.append("\n\nOnly add add-ons you trust.");
+        boolean[] answered = {false};
+        new android.app.AlertDialog.Builder(activity)
+                .setTitle("Add " + extension.metaData.name + "?")
+                .setMessage(message)
+                .setPositiveButton("Add", (d, w) -> {
+                    answered[0] = true;
+                    result.complete(new WebExtension.PermissionPromptResponse(true, false, false));
+                })
+                .setNegativeButton("Cancel", (d, w) -> {
+                    answered[0] = true;
+                    result.complete(no);
+                })
+                .setOnDismissListener(d -> {
+                    if (!answered[0]) {
+                        answered[0] = true;
+                        result.complete(no);
+                    }
+                })
+                .show();
+        return result;
+    }
+
+    private static String describePermission(String permission) {
+        switch (permission) {
+            case "tabs":
+            case "activeTab":
+                return "See the pages you have open";
+            case "webRequest":
+            case "webRequestBlocking":
+            case "declarativeNetRequest":
+            case "declarativeNetRequestWithHostAccess":
+                return "Block or change what pages load";
+            case "cookies":
+                return "Read and change cookies";
+            case "history":
+                return "Read your browsing history";
+            case "downloads":
+                return "Download files";
+            case "clipboardRead":
+                return "Read what you copy";
+            case "clipboardWrite":
+                return "Put text on your clipboard";
+            case "notifications":
+                return "Show notifications";
+            case "nativeMessaging":
+                return "Talk to other apps";
+            case "privacy":
+            case "proxy":
+                return "Change network and privacy settings";
+            case "geolocation":
+                return "Use your location";
+            default:
+                return null; // storage, alarms, menus, ... nothing a person needs to weigh
+        }
+    }
+
+    /** Checks every installed add-on (not the app's own helper); resolves to the number updated. */
     static GeckoResult<Integer> updateAll(Context context) {
         WebExtensionController controller = controller();
         return controller.list().then(list -> {
             List<GeckoResult<WebExtension>> updates = new ArrayList<>();
             for (WebExtension ext : list) {
-                if (find(ext.id) != null && !ext.isBuiltIn) {
+                if (!ext.isBuiltIn) {
                     updates.add(controller.update(ext).exceptionally(e -> {
                         Log.w(GeckoApp.TAG, "Update failed: " + ext.id, e);
                         return GeckoResult.fromValue(null);

@@ -131,11 +131,15 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
     }
 
     private void setUpExtensions(WebExtensionController controller) {
-        // Installs and updates are only started from the settings screen, so accept their prompts.
+        // Installs and updates are only started from the settings screen. The app's own choice of
+        // extensions installs straight away; other add-ons ask first, saying what they can access.
         controller.setPromptDelegate(new WebExtensionController.PromptDelegate() {
             @Override
             public GeckoResult<WebExtension.PermissionPromptResponse> onInstallPromptRequest(
                     WebExtension extension, String[] permissions, String[] origins, String[] dataCollection) {
+                if (Extensions.find(extension.id) == null) {
+                    return Extensions.confirmInstall(extension, permissions, origins);
+                }
                 return GeckoResult.fromValue(new WebExtension.PermissionPromptResponse(true, false, false));
             }
 
