@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.animation.ValueAnimator;
 import android.content.res.Configuration;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -18,10 +19,12 @@ import android.util.Log;
 import android.util.Rational;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.window.OnBackInvokedDispatcher;
@@ -61,7 +64,7 @@ public class MainActivity extends Activity {
 
     private static final Pattern URL_IN_TEXT = Pattern.compile("https?://\\S+");
 
-    private LinearLayout mRoot;
+    private FrameLayout mRoot;
     private LinearLayout mTabBar;
     private final TextView[] mTabButtons = new TextView[2];
     private GeckoView mView;
@@ -74,20 +77,30 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mRoot = new LinearLayout(this);
-        mRoot.setOrientation(LinearLayout.VERTICAL);
+        mRoot = new FrameLayout(this);
         mRoot.setBackgroundColor(getColor(R.color.background));
-        mTabBar = buildTabBar();
-        mRoot.addView(mTabBar);
         mView = new GeckoView(this);
         // A TextureView can be drawn scaled (the pop-up player, below); switching backends while
         // the app runs left the page black, so it's used throughout.
         mView.setViewBackend(GeckoView.BACKEND_TEXTURE_VIEW);
         mView.setAutofillEnabled(true);
         mView.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES);
-        mRoot.addView(mView, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+        mRoot.addView(mView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        // The tab bar floats over the top of the page and slides away (see "Tab bar" below).
+        mTabBar = buildTabBar();
+        mTabBar.setBackgroundColor(getColor(R.color.background));
+        mRoot.addView(mTabBar, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP));
+        mTabBar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (b - t != mBarHeight) {
+                mBarHeight = b - t;
+                applyBar();
+            }
+        });
         setContentView(mRoot);
         mRoot.setOnApplyWindowInsetsListener(this::applyInsets);
+        mRoot.postDelayed(mHideBar, BAR_HIDE_DELAY_MS);
         setFullScreen(false);
 
         IntentFilter pipFilter = new IntentFilter(PIP_ACTION);
@@ -137,7 +150,10 @@ public class MainActivity extends Activity {
             chip.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
             chip.setGravity(Gravity.CENTER);
             chip.setPadding(dp(16), 0, dp(16), 0);
-            chip.setOnClickListener(v -> open(tab, null));
+            chip.setOnClickListener(v -> {
+                open(tab, null);
+                showBar();
+            });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, dp(32));
             lp.rightMargin = dp(8);
@@ -180,7 +196,117 @@ public class MainActivity extends Activity {
     }
 
     private void updateTabBarVisibility() {
-        mTabBar.setVisibility(mFullScreen || isInPictureInPictureMode() ? View.GONE : View.VISIBLE);
+        applyBar();
+    }
+
+    // --- Tab bar: hides by itself, comes back when scrolling up ---------------------------
+    // Shown at start and whenever you scroll up (drag down) anywhere; hides after a few
+    // seconds or when you scroll down. It slides over the page like Firefox's address bar
+    // (GeckoView's "dynamic toolbar"): the page is laid out once for the space below the bar
+    // and is moved, not resized, so showing and hiding it doesn't make YouTube re-lay out.
+
+    private static final long BAR_HIDE_DELAY_MS = 3000;
+    private static final long BAR_ANIMATION_MS = 180;
+
+    private int mBarHeight;
+    /** 1 = fully shown, 0 = hidden. */
+    private float mBarFraction = 1;
+    private int mToolbarMaxHeight = -1;
+    private ValueAnimator mBarAnimator;
+    private final Runnable mHideBar = this::hideBar;
+    private float mTouchStartX;
+    private float mTouchStartY;
+    private boolean mTouchOnBar;
+    private boolean mGestureHandled;
+
+    private boolean barAllowed() {
+        return !mFullScreen && !isInPictureInPictureMode() && mFrozenWidth == 0;
+    }
+
+    private void applyBar() {
+        boolean allowed = barAllowed();
+        float shown = allowed ? mBarFraction * mBarHeight : 0;
+        mTabBar.setTranslationY(shown - mBarHeight);
+        mTabBar.setVisibility(shown > 0 ? View.VISIBLE : View.INVISIBLE);
+        int maxHeight = allowed ? mBarHeight : 0;
+        if (maxHeight != mToolbarMaxHeight) {
+            mToolbarMaxHeight = maxHeight;
+            mView.setDynamicToolbarMaxHeight(maxHeight);
+        }
+        if (mFrozenWidth == 0) {
+            mView.setTranslationY(shown);
+        }
+        // How far the bar has slid away: the page's fixed bottom bar moves down by as much.
+        mView.setVerticalClipping(Math.round(maxHeight - shown));
+    }
+
+    private void showBar() {
+        animateBar(1);
+        mRoot.removeCallbacks(mHideBar);
+        mRoot.postDelayed(mHideBar, BAR_HIDE_DELAY_MS);
+    }
+
+    private void hideBar() {
+        mRoot.removeCallbacks(mHideBar);
+        animateBar(0);
+    }
+
+    private void animateBar(float target) {
+        if (mBarAnimator != null) {
+            mBarAnimator.cancel();
+        }
+        if (mBarFraction == target || !barAllowed()) {
+            mBarFraction = target;
+            applyBar();
+            return;
+        }
+        mBarAnimator = ValueAnimator.ofFloat(mBarFraction, target);
+        mBarAnimator.setDuration(BAR_ANIMATION_MS);
+        mBarAnimator.addUpdateListener(a -> {
+            mBarFraction = (float) a.getAnimatedValue();
+            applyBar();
+        });
+        mBarAnimator.start();
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (barAllowed()) {
+            switch (ev.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    mTouchStartX = ev.getRawX();
+                    mTouchStartY = ev.getRawY();
+                    mGestureHandled = false;
+                    int[] at = new int[2];
+                    mTabBar.getLocationOnScreen(at);
+                    mTouchOnBar = mBarFraction > 0 && ev.getRawY() < at[1] + mTabBar.getHeight();
+                    if (mTouchOnBar) {
+                        mRoot.removeCallbacks(mHideBar); // not while it's being used
+                    }
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    float dy = ev.getRawY() - mTouchStartY;
+                    float dx = ev.getRawX() - mTouchStartX;
+                    if (!mTouchOnBar && !mGestureHandled && Math.abs(dy) > dp(24) && Math.abs(dy) > Math.abs(dx)) {
+                        mGestureHandled = true;
+                        if (dy > 0) {
+                            showBar(); // finger down: scrolling up
+                        } else if (mBarFraction > 0) {
+                            hideBar();
+                        }
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    if (mTouchOnBar) {
+                        mRoot.postDelayed(mHideBar, BAR_HIDE_DELAY_MS);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        return super.dispatchTouchEvent(ev);
     }
 
     /** Shows a tab, creating its page on first use, and loads url in it if given. */
@@ -290,6 +416,7 @@ public class MainActivity extends Activity {
         if (!isInPictureInPictureMode()) {
             unfreezePageSize();
             GeckoApp.get().setPictureInPicture(false);
+            showBar(); // back in the app (from Settings, the pop-up or another app)
         }
     }
 
@@ -374,7 +501,7 @@ public class MainActivity extends Activity {
         }
         mFrozenWidth = width;
         mFrozenHeight = height;
-        mView.setLayoutParams(new LinearLayout.LayoutParams(width, height));
+        mView.setLayoutParams(new FrameLayout.LayoutParams(width, height));
         mView.setPivotX(0);
         mView.setPivotY(0);
         mRoot.addOnLayoutChangeListener(mPipScaler);
@@ -407,7 +534,9 @@ public class MainActivity extends Activity {
         mView.setScaleY(1);
         mView.setTranslationX(0);
         mView.setTranslationY(0);
-        mView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+        mView.setLayoutParams(new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        applyBar();
     }
 
     // --- Picture-in-picture buttons ----------------------------------------------------

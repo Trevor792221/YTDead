@@ -82,5 +82,9 @@
     }
   }
 
-  setInterval(check, 750);
+  // Often until the current video is at its best quality, then only to notice the next video.
+  (function loop() {
+    check();
+    setTimeout(loop, done || tries >= MAX_TRIES ? 2000 : 500);
+  })();
 })();

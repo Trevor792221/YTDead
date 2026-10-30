@@ -198,6 +198,10 @@
   function refresh() {
     const status = ratings.get(currentId()) || "INDIFFERENT";
     for (const box of boxes) {
+      if (box.dataset.status === status) {
+        continue; // already showing it; don't redraw every second
+      }
+      box.dataset.status = status;
       const [dislike, like] = box.children;
       like.replaceChildren(icon(false, status === "LIKE"));
       dislike.replaceChildren(icon(true, status === "DISLIKE"));

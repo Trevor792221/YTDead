@@ -18,5 +18,9 @@ function update() {
   }
 }
 
-setInterval(update, 700);
+// YouTube changes pages without reloading; it announces each change.
+for (const type of ["yt-navigate-finish", "yt-page-data-updated", "popstate", "state-navigateend"]) {
+  window.addEventListener(type, update);
+}
 document.addEventListener("DOMContentLoaded", update);
+setInterval(update, 2500);
