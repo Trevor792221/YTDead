@@ -107,3 +107,24 @@ publishes a GitHub Release with the signed APK, once these repository secrets ar
 
 Two APKs are built, one per processor type (`arm64-v8a` and `armeabi-v7a`), because GeckoView
 ships a separate engine build for each.
+
+## License
+
+Copyright (C) 2026 Trevor792221
+
+YTDead is free software: you can redistribute it and/or modify it under the terms of the GNU
+General Public License as published by the Free Software Foundation, version 3 of the License
+(see [LICENSE](LICENSE)). It is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.
+
+**Additional permission under GNU GPL version 3 section 7:** If you modify this Program, or any
+covered work, by linking or combining it with Google Play services or other Google libraries
+distributed under the Android Software Development Kit License (or a modified version of those
+libraries), containing parts covered by the terms of that license, the licensors of this Program
+grant you additional permission to convey the resulting work.
+
+Third-party components keep their own licenses: GeckoView is under the Mozilla Public License
+2.0, AndroidX, Guava, the Kotlin libraries, JSpecify and SnakeYAML under the Apache License 2.0.
+The full list is in the app under Settings → Open-source licenses. YTDead is not affiliated with
+Google, YouTube or Mozilla.
