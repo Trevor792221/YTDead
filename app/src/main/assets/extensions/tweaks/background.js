@@ -2,9 +2,20 @@
 
 // Relays requests from content scripts to the app. The page's origin comes from the
 // sender, which the page can't fake, never from the message itself.
+
+// The app sends structured replies as JSON text (GeckoView can only pass back true/false,
+// numbers and text); turn them back into objects.
+async function ask(message) {
+  const reply = await browser.runtime.sendNativeMessage("ytgecko", message);
+  if (typeof reply === "string" && (reply.startsWith("{") || reply.startsWith("["))) {
+    return JSON.parse(reply);
+  }
+  return reply;
+}
+
 browser.runtime.onMessage.addListener((msg, sender) => {
   if (msg?.type === "openSettings" || msg?.type === "getPrefs") {
-    return browser.runtime.sendNativeMessage("ytgecko", { type: msg.type });
+    return ask({ type: msg.type });
   }
   if (msg?.type === "status") {
     return browser.runtime.sendNativeMessage("ytgecko", {
@@ -49,7 +60,7 @@ async function webauthn(msg, sender) {
       return { ok: false, name: "NotAllowedError", message: "Passkeys in cross-origin frames aren't supported." };
     }
   }
-  return browser.runtime.sendNativeMessage("ytgecko", {
+  return ask({
     type: "webauthn",
     op: msg.op,
     origin,

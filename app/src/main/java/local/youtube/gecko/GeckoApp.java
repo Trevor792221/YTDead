@@ -145,7 +145,11 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
         Extensions.onStartup(this, controller);
     }
 
-    /** Messages from the helper extension's background script. */
+    /**
+     * Messages from the helper extension's background script. Replies must be true/false,
+     * numbers or text: GeckoView can't pass a JSONObject back to the extension, so structured
+     * replies are sent as JSON text and parsed by background.js.
+     */
     private class NativeMessages implements WebExtension.MessageDelegate {
         @Override
         public GeckoResult<Object> onMessage(String nativeApp, Object message, WebExtension.MessageSender sender) {
@@ -166,7 +170,7 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                     Extensions.prefs(GeckoApp.this).edit()
                             .putLong("helper_contact", System.currentTimeMillis()).apply();
                     try {
-                        return GeckoResult.fromValue(new JSONObject()
+                        return GeckoResult.fromValue((Object) new JSONObject()
                                 .put("highestQuality", Extensions.prefs(GeckoApp.this)
                                         .getBoolean(Extensions.PREF_HIGHEST_QUALITY, true))
                                 .put("crossfadeSeconds", Extensions.prefs(GeckoApp.this)
@@ -175,7 +179,8 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                                 // no more resolution than its screen shows.
                                 .put("av1", Device.av1Hardware())
                                 .put("vp9", Device.vp9Hardware())
-                                .put("maxHeight", Device.maxVideoHeight(GeckoApp.this)));
+                                .put("maxHeight", Device.maxVideoHeight(GeckoApp.this))
+                                .toString());
                     } catch (org.json.JSONException e) {
                         return null;
                     }
@@ -187,7 +192,7 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                             .apply();
                     return GeckoResult.fromValue(true);
                 case "webauthn":
-                    return Passkeys.handle(mCurrentActivity, msg);
+                    return Passkeys.handle(mCurrentActivity, msg).map(reply -> (Object) reply.toString());
                 default:
                     return null;
             }
