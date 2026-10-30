@@ -330,14 +330,73 @@ public class MainActivity extends Activity {
         // Leaving the app while a video is full screen shrinks it to picture-in-picture.
         if (mFullScreen && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
             try {
-                // Show only the video in the pop-up (tweaks.css), whatever YouTube does with
-                // full screen when the window shrinks.
+                // Show only the video in the pop-up (tweaks.css), without YouTube's controls.
                 GeckoApp.get().setPictureInPicture(true);
+                freezePageSize();
                 enterPictureInPictureMode(pipParams());
             } catch (IllegalStateException e) {
                 Log.w(TAG, "Picture-in-picture not available", e);
+                unfreezePageSize();
+                GeckoApp.get().setPictureInPicture(false);
             }
         }
+    }
+
+    // --- Picture-in-picture size --------------------------------------------------------
+    // If the page saw the window shrink to pop-up size, YouTube would react (leave full screen,
+    // re-lay out its player, pause). So the page keeps its full-screen size and is drawn scaled
+    // down to fit the pop-up; for YouTube nothing changes. Scaling needs the TextureView backend.
+
+    private int mFrozenWidth;
+    private int mFrozenHeight;
+
+    private final View.OnLayoutChangeListener mPipScaler =
+            (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> fitPageToWindow();
+
+    private void freezePageSize() {
+        int width = mView.getWidth();
+        int height = mView.getHeight();
+        if (width <= 0 || height <= 0 || mFrozenWidth > 0) {
+            return;
+        }
+        mFrozenWidth = width;
+        mFrozenHeight = height;
+        mView.setViewBackend(GeckoView.BACKEND_TEXTURE_VIEW);
+        mView.setLayoutParams(new LinearLayout.LayoutParams(width, height));
+        mView.setPivotX(0);
+        mView.setPivotY(0);
+        mRoot.addOnLayoutChangeListener(mPipScaler);
+    }
+
+    private void fitPageToWindow() {
+        if (mFrozenWidth <= 0) {
+            return;
+        }
+        int width = mRoot.getWidth() - mRoot.getPaddingLeft() - mRoot.getPaddingRight();
+        int height = mRoot.getHeight() - mRoot.getPaddingTop() - mRoot.getPaddingBottom();
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        float scale = Math.min(1f, Math.min((float) width / mFrozenWidth, (float) height / mFrozenHeight));
+        mView.setScaleX(scale);
+        mView.setScaleY(scale);
+        mView.setTranslationX((width - mFrozenWidth * scale) / 2f);
+        mView.setTranslationY((height - mFrozenHeight * scale) / 2f - mView.getTop() + mRoot.getPaddingTop());
+    }
+
+    private void unfreezePageSize() {
+        if (mFrozenWidth <= 0) {
+            return;
+        }
+        mFrozenWidth = 0;
+        mFrozenHeight = 0;
+        mRoot.removeOnLayoutChangeListener(mPipScaler);
+        mView.setScaleX(1);
+        mView.setScaleY(1);
+        mView.setTranslationX(0);
+        mView.setTranslationY(0);
+        mView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+        mView.setViewBackend(GeckoView.BACKEND_SURFACE_VIEW);
     }
 
     // --- Picture-in-picture buttons ----------------------------------------------------
@@ -401,9 +460,18 @@ public class MainActivity extends Activity {
             actions = max <= 1 ? actions.subList(1, 2) : actions.subList(0, max);
         }
         return new PictureInPictureParams.Builder()
-                .setAspectRatio(new Rational(16, 9))
+                .setAspectRatio(pipAspectRatio())
                 .setActions(actions)
                 .build();
+    }
+
+    /** The page's own shape (Android allows between 1:2.39 and 2.39:1), else 16:9. */
+    private Rational pipAspectRatio() {
+        if (mFrozenWidth <= 0 || mFrozenHeight <= 0) {
+            return new Rational(16, 9);
+        }
+        float ratio = Math.max(1 / 2.39f, Math.min(2.39f, (float) mFrozenWidth / mFrozenHeight));
+        return new Rational(Math.round(ratio * 1000), 1000);
     }
 
     private android.app.RemoteAction pipAction(int icon, int label, String command) {
@@ -418,6 +486,11 @@ public class MainActivity extends Activity {
     public void onPictureInPictureModeChanged(boolean inPip, Configuration newConfig) {
         super.onPictureInPictureModeChanged(inPip, newConfig);
         GeckoApp.get().setPictureInPicture(inPip);
+        if (inPip) {
+            fitPageToWindow();
+        } else {
+            unfreezePageSize();
+        }
         updateTabBarVisibility();
         if (!inPip && mFullScreen && !isFinishing()) {
             setFullScreen(true);
