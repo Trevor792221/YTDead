@@ -80,6 +80,9 @@ public class MainActivity extends Activity {
         mTabBar = buildTabBar();
         mRoot.addView(mTabBar);
         mView = new GeckoView(this);
+        // A TextureView can be drawn scaled (the pop-up player, below); switching backends while
+        // the app runs left the page black, so it's used throughout.
+        mView.setViewBackend(GeckoView.BACKEND_TEXTURE_VIEW);
         mView.setAutofillEnabled(true);
         mView.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES);
         mRoot.addView(mView, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
@@ -281,6 +284,16 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // Back from the pop-up player: full size again, even if the mode change was missed.
+        if (!isInPictureInPictureMode()) {
+            unfreezePageSize();
+            GeckoApp.get().setPictureInPicture(false);
+        }
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
         // With background playback off, leaving the app pauses the video. Picture-in-picture
@@ -345,7 +358,7 @@ public class MainActivity extends Activity {
     // --- Picture-in-picture size --------------------------------------------------------
     // If the page saw the window shrink to pop-up size, YouTube would react (leave full screen,
     // re-lay out its player, pause). So the page keeps its full-screen size and is drawn scaled
-    // down to fit the pop-up; for YouTube nothing changes. Scaling needs the TextureView backend.
+    // down to fit the pop-up; for YouTube nothing changes.
 
     private int mFrozenWidth;
     private int mFrozenHeight;
@@ -361,7 +374,6 @@ public class MainActivity extends Activity {
         }
         mFrozenWidth = width;
         mFrozenHeight = height;
-        mView.setViewBackend(GeckoView.BACKEND_TEXTURE_VIEW);
         mView.setLayoutParams(new LinearLayout.LayoutParams(width, height));
         mView.setPivotX(0);
         mView.setPivotY(0);
@@ -396,7 +408,6 @@ public class MainActivity extends Activity {
         mView.setTranslationX(0);
         mView.setTranslationY(0);
         mView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
-        mView.setViewBackend(GeckoView.BACKEND_SURFACE_VIEW);
     }
 
     // --- Picture-in-picture buttons ----------------------------------------------------
