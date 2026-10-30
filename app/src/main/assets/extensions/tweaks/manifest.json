@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "YouTube app helper",
-  "version": "2.7",
+  "version": "2.8",
   "browser_specific_settings": {
     "gecko": {
       "id": "tweaks@youtube.gecko.local"
@@ -93,7 +93,8 @@
         "*://music.youtube.com/*"
       ],
       "js": [
-        "music.js"
+        "music.js",
+        "music-player.js"
       ],
       "run_at": "document_idle"
     },

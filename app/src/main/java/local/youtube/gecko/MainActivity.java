@@ -112,8 +112,17 @@ public class MainActivity extends Activity {
         }
         Playback.addListener(mPipUpdater);
 
+        GeckoApp.get().setPlayerPageListener(this::onPlayerPage);
         String url = urlFromIntent(getIntent());
-        open(url != null ? tabFor(Uri.parse(url), TAB_YOUTUBE) : TAB_YOUTUBE, url);
+        if (url != null) {
+            open(tabFor(Uri.parse(url), TAB_YOUTUBE), url);
+        } else {
+            // Back where you left off: the tab you were last in, at the video or song you were
+            // on (the other tab resumes too when you first switch to it).
+            Resume.startPending(this);
+            int tab = Resume.pendingUrl(this, Resume.lastTab(this)) != null ? Resume.lastTab(this) : TAB_YOUTUBE;
+            open(tab, null);
+        }
 
         // First launch: show Settings so the extensions can be installed.
         if (savedInstanceState == null
@@ -218,8 +227,27 @@ public class MainActivity extends Activity {
     private boolean mTouchOnBar;
     private boolean mGestureHandled;
 
+    /** YouTube Music's full-screen player is open in that tab: the bar stays out of its way. */
+    private final boolean[] mPlayerPageOpen = new boolean[2];
+
     private boolean barAllowed() {
-        return !mFullScreen && !isInPictureInPictureMode() && mFrozenWidth == 0;
+        return !mFullScreen && !isInPictureInPictureMode() && mFrozenWidth == 0 && !mPlayerPageOpen[mTab];
+    }
+
+    private void onPlayerPage(boolean music, boolean open) {
+        int tab = music ? TAB_MUSIC : TAB_YOUTUBE;
+        if (mPlayerPageOpen[tab] == open) {
+            return;
+        }
+        mPlayerPageOpen[tab] = open;
+        if (open) {
+            if (mBarAnimator != null) {
+                mBarAnimator.cancel();
+            }
+            mBarFraction = 0;
+            mRoot.removeCallbacks(mHideBar);
+        }
+        applyBar();
     }
 
     private void applyBar() {
@@ -308,6 +336,9 @@ public class MainActivity extends Activity {
     private void open(int tab, String url) {
         GeckoSession session = mSessions[tab];
         if (session == null) {
+            if (url == null) {
+                url = Resume.pendingUrl(this, tab);
+            }
             session = newSession(tab == TAB_MUSIC);
             mSessions[tab] = session;
             session.loadUri(url != null ? url : HOMES[tab]);
@@ -427,6 +458,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        GeckoApp.get().setPlayerPageListener(null);
         unregisterReceiver(mPipReceiver);
         Playback.removeListener(mPipUpdater);
         mView.releaseSession();

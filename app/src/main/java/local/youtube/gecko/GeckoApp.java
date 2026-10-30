@@ -97,6 +97,16 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
         }
     }
 
+    interface PlayerPageListener {
+        void onPlayerPage(boolean music, boolean open);
+    }
+
+    private PlayerPageListener mPlayerPageListener;
+
+    void setPlayerPageListener(PlayerPageListener listener) {
+        mPlayerPageListener = listener;
+    }
+
     /** Tells the pages whether the app is in picture-in-picture (they then show only the video). */
     void setPictureInPicture(boolean on) {
         if (mPictureInPicture != on) {
@@ -254,6 +264,18 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                             .putLong("status_time_" + msg.optString("key"), System.currentTimeMillis())
                             .apply();
                     return GeckoResult.fromValue(true);
+                case "playerPage":
+                    // YouTube Music's full-screen player opened or closed (music-player.js).
+                    if (mPlayerPageListener != null) {
+                        mPlayerPageListener.onPlayerPage(msg.optBoolean("music"), msg.optBoolean("open"));
+                    }
+                    return GeckoResult.fromValue(true);
+                case "resume":
+                    Resume.save(GeckoApp.this, msg.optBoolean("music"), msg.optString("url"),
+                            msg.optString("videoId"), msg.optDouble("time", 0), msg.optBoolean("ended"));
+                    return GeckoResult.fromValue(true);
+                case "getResume":
+                    return GeckoResult.fromValue(Resume.take(GeckoApp.this, msg.optBoolean("music")));
                 case "webauthn":
                     return Passkeys.handle(mCurrentActivity, msg).map(reply -> (Object) reply.toString());
                 default:

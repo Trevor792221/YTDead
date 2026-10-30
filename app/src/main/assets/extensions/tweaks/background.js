@@ -22,6 +22,25 @@ browser.runtime.onMessage.addListener((msg, sender) => {
       type: "status", key: String(msg.key).slice(0, 40), text: String(msg.text).slice(0, 200),
     });
   }
+  // Page state for the app, tagged with which tab it's from (by the sender, not the page).
+  const page = sender.url ? new URL(sender.url) : null;
+  const music = page?.hostname === "music.youtube.com";
+  if (msg?.type === "playerPage") {
+    return ask({ type: "playerPage", music, open: !!msg.open });
+  }
+  if (msg?.type === "resume" && page && sender.frameId === 0) {
+    const url = new URL(String(msg.url), page.origin);
+    if (url.origin !== page.origin) {
+      return undefined;
+    }
+    return ask({
+      type: "resume", music, url: url.href, videoId: String(msg.videoId).slice(0, 32),
+      time: Number(msg.time) || 0, ended: !!msg.ended,
+    });
+  }
+  if (msg?.type === "getResume" && sender.frameId === 0) {
+    return ask({ type: "getResume", music });
+  }
   if (msg?.type === "webauthn") {
     return webauthn(msg, sender);
   }
