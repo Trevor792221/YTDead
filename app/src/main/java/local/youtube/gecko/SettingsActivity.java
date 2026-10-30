@@ -143,14 +143,12 @@ public class SettingsActivity extends Activity {
                         + "in a notification.",
                 Extensions.PREF_BACKGROUND_PLAY));
 
-        if (!Device.isTv(this)) {
-            mList.addView(heading("Display", 18));
-            mList.addView(toggle("Use phone's text size",
-                    "Make YouTube's text follow the font size set in your phone's settings. Large "
-                            + "sizes can make text overlap icons.",
-                    Extensions.PREF_SYSTEM_TEXT_SIZE, false,
-                    on -> GeckoApp.get().runtime().getSettings().setAutomaticFontSizeAdjustment(on)));
-        }
+        mList.addView(heading("Display", 18));
+        mList.addView(toggle("Use phone's text size",
+                "Make YouTube's text follow the font size set in your phone's settings. Large "
+                        + "sizes can make text overlap icons.",
+                Extensions.PREF_SYSTEM_TEXT_SIZE, false,
+                on -> GeckoApp.get().runtime().getSettings().setAutomaticFontSizeAdjustment(on)));
 
         mList.addView(heading("Passwords and passkeys", 18));
         mList.addView(body("Sign-in forms use your phone's password manager (autofill service), and passkeys "
@@ -312,8 +310,6 @@ public class SettingsActivity extends Activity {
                 + "fades out, without the usual pause between tracks.");
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         box.addView(t);
-        box.setFocusable(true);
-        box.setBackground(focusable(0x00000000, dp(8)));
         box.setOnClickListener(v -> {
             String[] labels = new String[CROSSFADE_CHOICES.length];
             int checked = 0;
@@ -394,7 +390,10 @@ public class SettingsActivity extends Activity {
         b.setText(label);
         b.setAllCaps(false);
         b.setTextColor(primary ? 0xFFFFFFFF : TEXT);
-        b.setBackground(focusable(primary ? ACCENT : 0xFF3A3A3A, dp(18)));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(primary ? ACCENT : 0xFF3A3A3A);
+        bg.setCornerRadius(dp(18));
+        b.setBackground(bg);
         b.setMinHeight(dp(36));
         b.setMinimumHeight(dp(36));
         b.setPadding(dp(14), 0, dp(14), 0);
@@ -405,24 +404,6 @@ public class SettingsActivity extends Activity {
         b.setLayoutParams(lp);
         b.setOnClickListener(onClick);
         return b;
-    }
-
-    /**
-     * A rounded background that shows a white outline when focused, so the TV remote's
-     * position is visible (custom backgrounds lose the theme's focus highlight).
-     */
-    private android.graphics.drawable.Drawable focusable(int color, int radius) {
-        GradientDrawable normal = new GradientDrawable();
-        normal.setColor(color);
-        normal.setCornerRadius(radius);
-        GradientDrawable focused = new GradientDrawable();
-        focused.setColor(color);
-        focused.setCornerRadius(radius);
-        focused.setStroke(dp(3), 0xFFFFFFFF);
-        android.graphics.drawable.StateListDrawable states = new android.graphics.drawable.StateListDrawable();
-        states.addState(new int[] {android.R.attr.state_focused}, focused);
-        states.addState(new int[] {}, normal);
-        return states;
     }
 
     private void toast(String message) {

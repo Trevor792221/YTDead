@@ -5,21 +5,19 @@ import android.app.PictureInPictureParams;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Rational;
-import android.util.TypedValue;
-import android.view.Gravity;
-import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.Gravity;
 import android.view.WindowManager;
+import android.graphics.drawable.GradientDrawable;
+import android.util.TypedValue;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.window.OnBackInvokedDispatcher;
@@ -48,12 +46,6 @@ public class MainActivity extends Activity {
     private static final String[] HOMES = {"https://m.youtube.com/", "https://music.youtube.com/"};
     private static final String[] TAB_LABELS = {"YouTube", "Music"};
 
-    /** On Android TV: YouTube's own TV interface, built for remotes and big screens. */
-    private static final String TV_HOME = "https://www.youtube.com/tv";
-    /** A TV user agent YouTube serves its TV interface to, for a Gecko-based browser. */
-    private static final String TV_USER_AGENT = "Mozilla/5.0 (PS4; Leanback Shell) Gecko/20100101 "
-            + "Firefox/65.0 LeanbackShell/01.00.01.75 Sony PS4/ (PS4, , no, CH)";
-
     /** Links that belong to the other tab: YouTube pages people navigate to (not sign-in steps). */
     private static final Pattern YOUTUBE_PAGE = Pattern.compile(
             "^/($|watch|shorts|channel/|c/|user/|@|playlist|results|feed|live|hashtag)");
@@ -73,12 +65,10 @@ public class MainActivity extends Activity {
     private final boolean[] mCanGoBack = new boolean[2];
     private int mTab = TAB_YOUTUBE;
     private boolean mFullScreen;
-    private boolean mTv;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mTv = Device.isTv(this);
 
         mRoot = new LinearLayout(this);
         mRoot.setOrientation(LinearLayout.VERTICAL);
@@ -94,11 +84,7 @@ public class MainActivity extends Activity {
         setFullScreen(false);
 
         String url = urlFromIntent(getIntent());
-        if (mTv) {
-            open(TAB_YOUTUBE, url != null ? tvUrl(Uri.parse(url)) : null);
-        } else {
-            open(url != null ? tabFor(Uri.parse(url), TAB_YOUTUBE) : TAB_YOUTUBE, url);
-        }
+        open(url != null ? tabFor(Uri.parse(url), TAB_YOUTUBE) : TAB_YOUTUBE, url);
 
         // First launch: show Settings so the extensions can be installed.
         if (savedInstanceState == null
@@ -117,64 +103,7 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         String url = urlFromIntent(intent);
         if (url != null) {
-            if (mTv) {
-                open(TAB_YOUTUBE, tvUrl(Uri.parse(url)));
-            } else {
-                open(tabFor(Uri.parse(url), mTab), url);
-            }
-        }
-    }
-
-    // --- Android TV -----------------------------------------------------------------
-
-    /** A YouTube link as the TV interface's address for the same video, or its home. */
-    private static String tvUrl(Uri uri) {
-        String id = null;
-        if ("youtu.be".equals(uri.getHost()) && uri.getPathSegments().size() > 0) {
-            id = uri.getPathSegments().get(0);
-        } else if (uri.getPath() != null && uri.getPath().startsWith("/watch")) {
-            id = uri.getQueryParameter("v");
-        } else if (uri.getPath() != null && uri.getPath().startsWith("/shorts/")
-                && uri.getPathSegments().size() > 1) {
-            id = uri.getPathSegments().get(1);
-        }
-        return id != null && id.matches("[A-Za-z0-9_-]{6,20}") ? TV_HOME + "#/watch?v=" + id : TV_HOME;
-    }
-
-    /** Presses a key in the page, as if it came from the remote. */
-    private void sendKey(int keyCode) {
-        long now = android.os.SystemClock.uptimeMillis();
-        mView.dispatchKeyEvent(new KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0));
-        mView.dispatchKeyEvent(new KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0));
-    }
-
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        if (mTv) {
-            switch (event.getKeyCode()) {
-                case KeyEvent.KEYCODE_DPAD_CENTER:
-                    // YouTube's TV interface selects with Enter.
-                    return mView.dispatchKeyEvent(new KeyEvent(event.getDownTime(), event.getEventTime(),
-                            event.getAction(), KeyEvent.KEYCODE_ENTER, event.getRepeatCount(),
-                            event.getMetaState()));
-                case KeyEvent.KEYCODE_MENU:
-                case KeyEvent.KEYCODE_SETTINGS:
-                    if (event.getAction() == KeyEvent.ACTION_UP) {
-                        startActivity(new Intent(this, SettingsActivity.class));
-                    }
-                    return true;
-                default:
-                    break;
-            }
-        }
-        return super.dispatchKeyEvent(event);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (mTv) {
-            mView.requestFocus();
+            open(tabFor(Uri.parse(url), mTab), url);
         }
     }
 
@@ -216,7 +145,7 @@ public class MainActivity extends Activity {
     }
 
     private void updateTabBarVisibility() {
-        mTabBar.setVisibility(mTv || mFullScreen || isInPictureInPictureMode() ? View.GONE : View.VISIBLE);
+        mTabBar.setVisibility(mFullScreen || isInPictureInPictureMode() ? View.GONE : View.VISIBLE);
     }
 
     /** Shows a tab, creating its page on first use, and loads url in it if given. */
@@ -225,7 +154,7 @@ public class MainActivity extends Activity {
         if (session == null) {
             session = newSession();
             mSessions[tab] = session;
-            session.loadUri(url != null ? url : mTv ? TV_HOME : HOMES[tab]);
+            session.loadUri(url != null ? url : HOMES[tab]);
         } else if (url != null) {
             session.loadUri(url);
         }
@@ -249,16 +178,10 @@ public class MainActivity extends Activity {
     }
 
     private GeckoSession newSession() {
-        GeckoSessionSettings.Builder settings = new GeckoSessionSettings.Builder()
+        GeckoSession session = new GeckoSession(new GeckoSessionSettings.Builder()
                 .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
-                .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE);
-        if (mTv) {
-            // The TV page has no viewport tag: lay it out at the screen's width rather than as
-            // a shrunk-down desktop page.
-            settings.userAgentOverride(TV_USER_AGENT)
-                    .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_DESKTOP);
-        }
-        GeckoSession session = new GeckoSession(settings.build());
+                .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
+                .build());
         session.setContentDelegate(new Content());
         session.setNavigationDelegate(new Navigation());
         session.setPermissionDelegate(new Permissions());
@@ -290,9 +213,6 @@ public class MainActivity extends Activity {
 
     /** A link in one tab to the other site: open it in that site's tab instead. */
     private boolean belongsToOtherTab(GeckoSession from, Uri uri) {
-        if (mTv) {
-            return false; // one page on TV
-        }
         int to = tabFor(uri, -1);
         if (to < 0 || to == tabOf(from)) {
             return false;
@@ -357,11 +277,6 @@ public class MainActivity extends Activity {
     }
 
     private void handleBack() {
-        if (mTv) {
-            // YouTube's TV interface goes back on Escape, and offers "Exit" on its home screen.
-            sendKey(KeyEvent.KEYCODE_ESCAPE);
-            return;
-        }
         GeckoSession session = mSessions[mTab];
         if (mFullScreen) {
             session.exitFullScreen();
@@ -379,8 +294,7 @@ public class MainActivity extends Activity {
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
         // Leaving the app while a video is full screen shrinks it to picture-in-picture.
-        if (mFullScreen && !mTv
-                && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+        if (mFullScreen) {
             enterPictureInPictureMode(new PictureInPictureParams.Builder()
                     .setAspectRatio(new Rational(16, 9))
                     .build());
@@ -478,9 +392,7 @@ public class MainActivity extends Activity {
         }
         if (fullScreen) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            if (!mTv) {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-            }
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
@@ -493,12 +405,6 @@ public class MainActivity extends Activity {
         @Override
         public void onFullScreen(GeckoSession session, boolean fullScreen) {
             setFullScreen(fullScreen);
-        }
-
-        @Override
-        public void onCloseRequest(GeckoSession session) {
-            // The page closed itself (the TV interface's "Exit").
-            moveTaskToBack(true);
         }
 
         @Override

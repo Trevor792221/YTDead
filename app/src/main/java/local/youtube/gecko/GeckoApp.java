@@ -51,13 +51,12 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
      */
     GeckoRuntime runtime() {
         if (mRuntime == null) {
-            boolean tv = Device.isTv(this);
             GeckoRuntimeSettings settings = new GeckoRuntimeSettings.Builder()
                     .preferredColorScheme(GeckoRuntimeSettings.COLOR_SCHEME_DARK)
                     // YouTube's pages are laid out for their own text sizes; enlarged text
                     // (system font scale, Firefox's mobile font inflation) overlaps their icons.
-                    // On phones the font scale can be turned back on in App settings.
-                    .automaticFontSizeAdjustment(!tv && Extensions.prefs(this)
+                    // The phone's font scale can be turned back on in App settings.
+                    .automaticFontSizeAdjustment(Extensions.prefs(this)
                             .getBoolean(Extensions.PREF_SYSTEM_TEXT_SIZE, false))
                     .fontInflation(false)
                     .fontSizeFactor(1.0f)

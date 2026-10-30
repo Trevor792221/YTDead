@@ -10,13 +10,8 @@
     <!-- Lets Credential Manager sign passkeys for the website's origin, as browsers do. -->
     <uses-permission android:name="android.permission.CREDENTIAL_MANAGER_SET_ORIGIN" />
 
-    <!-- Android TV: no touchscreen needed; listed in the TV launcher (Leanback). -->
-    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-    <uses-feature android:name="android.software.leanback" android:required="false" />
-
     <application
         android:name=".GeckoApp"
-        android:banner="@drawable/banner"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
@@ -37,7 +32,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
             <meta-data
                 android:name="android.app.shortcuts"
@@ -76,19 +70,6 @@
             android:name=".PlaybackService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
-
-        <!-- On TV there are no icon shortcuts, so App settings gets its own launcher entry. -->
-        <activity-alias
-            android:name=".TvSettings"
-            android:targetActivity=".SettingsActivity"
-            android:exported="true"
-            android:label="@string/tv_settings"
-            android:banner="@drawable/banner_settings">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
 
         <activity
             android:name=".ExtensionPageActivity"

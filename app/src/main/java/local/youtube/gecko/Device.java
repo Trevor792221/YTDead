@@ -1,9 +1,6 @@
 package local.youtube.gecko;
 
-import android.app.UiModeManager;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.hardware.display.DisplayManager;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
@@ -16,12 +13,6 @@ final class Device {
     private static Boolean sVp9Hardware;
 
     private Device() {
-    }
-
-    static boolean isTv(Context context) {
-        UiModeManager ui = context.getSystemService(UiModeManager.class);
-        return (ui != null && ui.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION)
-                || context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
     }
 
     /** Whether AV1 video can be decoded in hardware (otherwise it would load the processor). */
