@@ -94,8 +94,10 @@ a copy signed with the release key. Keep the key safe: every update must be sign
 
 ### Releases
 
-`.github/workflows/build.yml` builds the APK on every push. Pushing a tag such as `v2.1`
-publishes a GitHub Release with the signed APK, once these repository secrets are set:
+`.github/workflows/build.yml` builds the APK on every push. When `main` gets a version
+(`versionName` in `app/build.gradle`) that has no release yet, it publishes a GitHub Release
+`v<version>` with the signed APK (pushing a tag such as `v2.1` does the same), once these
+repository secrets are set:
 `KEYSTORE_BASE64` (`base64 -w0 release.jks`), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
 Only `arm64-v8a` is built. For older 32-bit phones change the GeckoView dependency in
