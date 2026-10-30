@@ -68,4 +68,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: YTDead-TV-*.apk
+          # Not "latest": the README's download button on main gets the phone APK from there.
+          make_latest: false
           generate_release_notes: true
