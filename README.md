@@ -1,6 +1,11 @@
 # YTDead
 
 <a href="https://github.com/Trevor792221/YTDead/releases/latest/download/YTDead.apk"><img src="https://img.shields.io/badge/Download-APK%20for%20Android-FF0033?style=for-the-badge&logo=android&logoColor=white" alt="Download APK for Android" height="40"></a>
+<a href="https://github.com/Trevor792221/YTDead/releases/download/tv-latest/YTDead-TV-arm32.apk"><img src="https://img.shields.io/badge/Download-APK%20for%20Android%20TV-272727?style=for-the-badge&logo=androidtv&logoColor=white" alt="Download APK for Android TV" height="40"></a>
+
+<sub>Android TV: the button gets the version that works on most TVs (32-bit).
+[64-bit TV version](https://github.com/Trevor792221/YTDead/releases/download/tv-latest/YTDead-TV-arm64.apk)
+for newer TVs that only run 64-bit apps.</sub>
 
 YouTube for Android without the ads. Not affiliated with YouTube or Google.
 
