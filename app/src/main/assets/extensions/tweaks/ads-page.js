@@ -40,6 +40,9 @@
     "thumbnail", "thumbnails", "accessibility", "accessibilityData", "commandMetadata",
   ]);
 
+  // Where "Open App" links go (app.music.youtube.com, app.youtube.com).
+  const OPEN_APP_URL = /^https?:\/\/app\.(music\.)?youtube\.com/;
+
   // Wrappers whose ad-ness is decided by what they contain.
   const WRAPPERS = ["richItemRenderer", "richSectionRenderer", "reelItemRenderer", "shelfRenderer"];
 
@@ -74,6 +77,13 @@
     }
     // The empty "companion slot" under the mobile player that ads are drawn into.
     if (item.companionSlotRenderer) {
+      return true;
+    }
+    // "Open App" entries (YouTube Music's menu): they link to the app download page.
+    const entry = item.guideEntryRenderer;
+    const url = entry && entry.navigationEndpoint && entry.navigationEndpoint.urlEndpoint
+      && entry.navigationEndpoint.urlEndpoint.url;
+    if (typeof url === "string" && OPEN_APP_URL.test(url)) {
       return true;
     }
     return false;
