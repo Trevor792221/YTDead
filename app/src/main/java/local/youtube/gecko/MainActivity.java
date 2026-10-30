@@ -80,9 +80,10 @@ public class MainActivity extends Activity {
         mRoot = new FrameLayout(this);
         mRoot.setBackgroundColor(getColor(R.color.background));
         mView = new GeckoView(this);
-        // A TextureView can be drawn scaled (the pop-up player, below); switching backends while
-        // the app runs left the page black, so it's used throughout.
-        mView.setViewBackend(GeckoView.BACKEND_TEXTURE_VIEW);
+        // GeckoView's default SurfaceView backend: the page (and video) go straight to the
+        // display, which is smoother and uses less power than a TextureView. Since Android 7 a
+        // SurfaceView can be moved and scaled like any view, which the tab bar and the pop-up
+        // player rely on. (Never switch backends while the app runs: that left the page black.)
         mView.setAutofillEnabled(true);
         mView.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES);
         mRoot.addView(mView, new FrameLayout.LayoutParams(
