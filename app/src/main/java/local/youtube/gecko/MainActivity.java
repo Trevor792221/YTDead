@@ -1,18 +1,14 @@
 package local.youtube.gecko;
 
 import android.app.Activity;
-import android.app.PictureInPictureParams;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.Rational;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -216,7 +212,7 @@ public class MainActivity extends Activity {
     }
 
     private void updateTabBarVisibility() {
-        mTabBar.setVisibility(mTv || mFullScreen || isInPictureInPictureMode() ? View.GONE : View.VISIBLE);
+        mTabBar.setVisibility(mTv || mFullScreen ? View.GONE : View.VISIBLE);
     }
 
     /** Shows a tab, creating its page on first use, and loads url in it if given. */
@@ -331,9 +327,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
-        // With background playback off, leaving the app pauses the video. Picture-in-picture
-        // is still "started", so it doesn't pause.
-        if (!backgroundPlayEnabled() && !isInPictureInPictureMode() && !isChangingConfigurations()) {
+        // With background playback off, leaving the app pauses the video.
+        if (!backgroundPlayEnabled() && !isChangingConfigurations()) {
             Playback.pause();
         }
     }
@@ -372,27 +367,6 @@ public class MainActivity extends Activity {
         } else {
             // Like the real app: go to the home screen but keep playing.
             moveTaskToBack(true);
-        }
-    }
-
-    @Override
-    protected void onUserLeaveHint() {
-        super.onUserLeaveHint();
-        // Leaving the app while a video is full screen shrinks it to picture-in-picture.
-        if (mFullScreen && !mTv
-                && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
-            enterPictureInPictureMode(new PictureInPictureParams.Builder()
-                    .setAspectRatio(new Rational(16, 9))
-                    .build());
-        }
-    }
-
-    @Override
-    public void onPictureInPictureModeChanged(boolean inPip, Configuration newConfig) {
-        super.onPictureInPictureModeChanged(inPip, newConfig);
-        updateTabBarVisibility();
-        if (!inPip && mFullScreen && !isFinishing()) {
-            setFullScreen(true);
         }
     }
 
