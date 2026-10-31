@@ -4,7 +4,6 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -13,20 +12,42 @@ import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.MediaDescription;
 import android.media.MediaMetadata;
+import android.media.browse.MediaBrowser;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.os.Build;
-import android.os.IBinder;
+import android.os.Bundle;
 import android.os.SystemClock;
+import android.service.media.MediaBrowserService;
 import android.util.Log;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Keeps playback going with the app in the background and shows the media notification
  * (lock screen and quick settings controls): previous/next or back/forward 10 s, play/pause,
  * a seek bar, and close.
+ *
+ * Also the app's media browser for Android Auto: the car shows what's playing (the sound of a
+ * YouTube video or a YouTube Music song) with the same controls. No video in the car.
  */
-public class PlaybackService extends Service implements Playback.Listener {
+public class PlaybackService extends MediaBrowserService implements Playback.Listener {
+    private static final String BROWSE_ROOT = "root";
+    private static final String NOW_PLAYING = "now_playing";
+    /** Who may see and control playback: Android Auto, Android's own media controls, the app. */
+    private static final Set<String> TRUSTED_CALLERS = new HashSet<>(Arrays.asList(
+            "com.google.android.projection.gearhead", // Android Auto
+            "com.android.car.media", // cars with Android built in
+            "com.google.android.carassistant",
+            "com.android.systemui",
+            "com.android.bluetooth"));
+
     private static final String CHANNEL = "playback";
     private static final int NOTIFICATION_ID = 1;
     private static final String ACTION_PLAY_PAUSE = "play_pause";
@@ -116,12 +137,25 @@ public class PlaybackService extends Service implements Playback.Listener {
             }
 
             @Override
+            public void onPlayFromMediaId(String mediaId, Bundle extras) {
+                Playback.play(); // "Now playing", picked in the car
+            }
+
+            @Override
             public void onCustomAction(String action, android.os.Bundle extras) {
                 handleAction(action);
             }
         });
         mSession.setSessionActivity(openAppIntent());
         mSession.setActive(true);
+        setSessionToken(mSession.getSessionToken());
+        if (!Playback.isActive()) {
+            // Android Auto connected before anything plays: say how to start.
+            mSession.setPlaybackState(new PlaybackState.Builder()
+                    .setState(PlaybackState.STATE_ERROR, 0, 0)
+                    .setErrorMessage("Start a video or song in YTDead on your phone.")
+                    .build());
+        }
 
         mAudio = getSystemService(AudioManager.class);
         mFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
@@ -181,9 +215,43 @@ public class PlaybackService extends Service implements Playback.Listener {
         stopSelf();
     }
 
+    // --- Android Auto ----------------------------------------------------------------------
+
+    @Override
+    public BrowserRoot onGetRoot(String clientPackageName, int clientUid, Bundle rootHints) {
+        boolean trusted = clientPackageName.equals(getPackageName()) || TRUSTED_CALLERS.contains(clientPackageName);
+        return trusted ? new BrowserRoot(BROWSE_ROOT, null) : null;
+    }
+
+    @Override
+    public void onLoadChildren(String parentId, Result<List<MediaBrowser.MediaItem>> result) {
+        List<MediaBrowser.MediaItem> items = new ArrayList<>();
+        if (BROWSE_ROOT.equals(parentId) && Playback.isActive()) {
+            items.add(new MediaBrowser.MediaItem(new MediaDescription.Builder()
+                    .setMediaId(NOW_PLAYING)
+                    .setTitle(Playback.title != null ? Playback.title : getString(R.string.app_name))
+                    .setSubtitle(Playback.artist)
+                    .setIconBitmap(smallArtwork())
+                    .build(), MediaBrowser.MediaItem.FLAG_PLAYABLE));
+        }
+        result.sendResult(items);
+    }
+
+    /** The artwork at list size (a full-size picture could be too big to send to the car). */
+    private static android.graphics.Bitmap smallArtwork() {
+        android.graphics.Bitmap art = Playback.artwork;
+        if (art == null || Math.max(art.getWidth(), art.getHeight()) <= 256) {
+            return art;
+        }
+        float scale = 256f / Math.max(art.getWidth(), art.getHeight());
+        return android.graphics.Bitmap.createScaledBitmap(art,
+                Math.round(art.getWidth() * scale), Math.round(art.getHeight() * scale), true);
+    }
+
     @Override
     public void onPlaybackChanged() {
         if (!Playback.isActive()) {
+            // Stays while Android Auto is connected (bound); otherwise stops.
             stopSelf();
             return;
         }
@@ -195,6 +263,7 @@ public class PlaybackService extends Service implements Playback.Listener {
                 + "|" + Playback.playing + "|" + Playback.features;
         if (!key.equals(mShownKey)) {
             mShownKey = key;
+            notifyChildrenChanged(BROWSE_ROOT); // the car's "Now playing" entry
             getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, buildNotification());
         }
     }
@@ -339,10 +408,5 @@ public class PlaybackService extends Service implements Playback.Listener {
         mSession.release();
         stopForeground(STOP_FOREGROUND_REMOVE);
         super.onDestroy();
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
     }
 }
