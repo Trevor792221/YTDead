@@ -190,6 +190,15 @@ public class SettingsActivity extends Activity {
         LinearLayout row3 = buttonRow();
         row3.addView(button("Open-source licenses", false,
                 v -> startActivity(new Intent(this, LicensesActivity.class))));
+        // TEST BUILD ONLY: makes the next start crash, like 2.26 did, to check the next one recovers.
+        row3.addView(button("Test crash on start", false, v -> {
+            Extensions.prefs(this).edit().putBoolean("test_crash_on_start", true).commit();
+            toast("YTDead will close now. Open it again: it should crash once, then recover.");
+            mList.postDelayed(() -> {
+                finishAffinity();
+                android.os.Process.killProcess(android.os.Process.myPid());
+            }, 1500);
+        }));
         mList.addView(row3);
     }
 

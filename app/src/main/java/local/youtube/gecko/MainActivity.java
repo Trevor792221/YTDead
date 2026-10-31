@@ -123,8 +123,12 @@ public class MainActivity extends Activity {
             open(tabFor(Uri.parse(url), TAB_YOUTUBE), url);
         } else if (crashedLastStart) {
             Resume.clear(this);
+            Extensions.prefs(this).edit().remove("test_crash_on_start").commit(); // TEST BUILD ONLY
             open(TAB_YOUTUBE, null);
         } else {
+            if (Extensions.prefs(this).getBoolean("test_crash_on_start", false)) {
+                throw new IllegalStateException("Test crash on start (from Settings > About)"); // TEST BUILD ONLY
+            }
             // Back where you left off: the tab you were last in, at the video or song you were
             // on (the other tab resumes too when you first switch to it).
             Resume.startPending(this);
