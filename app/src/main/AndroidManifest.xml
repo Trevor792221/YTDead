@@ -74,6 +74,20 @@
             android:resizeableActivity="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|layoutDirection" />
 
+        <!-- After a crash: the details, in a process of its own (stays up if the app goes down). -->
+        <activity
+            android:name=".CrashReportActivity"
+            android:exported="false"
+            android:label="YTDead crash report"
+            android:process=":crash"
+            android:taskAffinity="local.youtube.gecko.crash" />
+
+        <!-- Where GeckoView reports its own crashes (CrashLog keeps the reason). -->
+        <service
+            android:name=".CrashHandlerService"
+            android:exported="false"
+            android:process=":crash" />
+
         <service
             android:name=".PlaybackService"
             android:exported="false"

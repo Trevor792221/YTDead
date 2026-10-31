@@ -54,6 +54,16 @@ final class Resume {
         edit.apply();
     }
 
+    /** Forgets every saved spot (after the app crashed right after starting). */
+    static void clear(Context context) {
+        SharedPreferences.Editor edit = prefs(context).edit();
+        for (int tab = 0; tab < 2; tab++) {
+            edit.remove(KEY_URL + tab).remove(KEY_VIDEO + tab).remove(KEY_TIME + tab);
+            sPending[tab] = false;
+        }
+        edit.apply();
+    }
+
     /** At app start: each tab with a saved spot opens there. */
     static void startPending(Context context) {
         for (int tab = 0; tab < 2; tab++) {

@@ -113,15 +113,26 @@ public class MainActivity extends Activity {
         Playback.addListener(mPipUpdater);
 
         GeckoApp.get().setPlayerPageListener(this::onPlayerPage);
+        // If the app closed right after its last start, start plainly this time: don't reopen
+        // what may have caused it.
+        // The same right after an update, as an older version may not have noticed its crash.
+        boolean crashedLastStart = CrashLog.takeStartupCrash(this) | firstStartOfThisVersion();
+        CrashLog.started(this);
         String url = urlFromIntent(getIntent());
         if (url != null) {
             open(tabFor(Uri.parse(url), TAB_YOUTUBE), url);
+        } else if (crashedLastStart) {
+            Resume.clear(this);
+            open(TAB_YOUTUBE, null);
         } else {
             // Back where you left off: the tab you were last in, at the video or song you were
             // on (the other tab resumes too when you first switch to it).
             Resume.startPending(this);
             int tab = Resume.pendingUrl(this, Resume.lastTab(this)) != null ? Resume.lastTab(this) : TAB_YOUTUBE;
             open(tab, null);
+        }
+        if (savedInstanceState == null) {
+            offerCrashReport();
         }
 
         // First launch: show Settings so the extensions can be installed.
@@ -133,6 +144,27 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                     OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::handleBack);
+        }
+    }
+
+    @SuppressWarnings("deprecation") // versionCode, for Android 8
+    private boolean firstStartOfThisVersion() {
+        long version;
+        try {
+            android.content.pm.PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            version = Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+        boolean first = Extensions.prefs(this).getLong("started_version", -1) != version;
+        Extensions.prefs(this).edit().putLong("started_version", version).apply();
+        return first;
+    }
+
+    /** After a crash: what happened, to send to the developer (in a process of its own). */
+    private void offerCrashReport() {
+        if (CrashLog.read(this) != null) {
+            startActivity(new Intent(this, CrashReportActivity.class));
         }
     }
 
