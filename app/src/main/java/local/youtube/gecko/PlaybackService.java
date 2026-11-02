@@ -439,13 +439,17 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
         if (Playback.isMusic()) {
             // YouTube Music: like / dislike (filled when chosen) and shuffle, in Android Auto and
             // (first two) in the phone's media controls, like the YouTube Music app.
+            // Android Auto caches these icons by resource number across app updates, so they
+            // keep fixed numbers no version used for anything else (app/stable-ids.txt).
             state.addCustomAction(ACTION_LIKE, getString(R.string.like),
-                    "LIKE".equals(Playback.musicRating) ? R.drawable.ic_thumb_up_filled : R.drawable.ic_thumb_up);
+                    "LIKE".equals(Playback.musicRating) ? R.drawable.zz_media_thumb_up_filled : R.drawable.zz_media_thumb_up);
             state.addCustomAction(ACTION_DISLIKE, getString(R.string.dislike),
-                    "DISLIKE".equals(Playback.musicRating) ? R.drawable.ic_thumb_down_filled : R.drawable.ic_thumb_down);
-            state.addCustomAction(ACTION_SHUFFLE, getString(R.string.shuffle), R.drawable.ic_shuffle);
+                    "DISLIKE".equals(Playback.musicRating) ? R.drawable.zz_media_thumb_down_filled : R.drawable.zz_media_thumb_down);
+            state.addCustomAction(ACTION_SHUFFLE, getString(R.string.shuffle), R.drawable.zz_media_shuffle);
+        } else {
+            // Not for YouTube Music: cars have room for about three of these buttons.
+            state.addCustomAction(ACTION_CLOSE, getString(R.string.close), R.drawable.ic_close);
         }
-        state.addCustomAction(ACTION_CLOSE, getString(R.string.close), R.drawable.ic_close);
         state.setActions(actions);
         state.setState(Playback.playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED,
                 (long) (Playback.currentPosition() * 1000),

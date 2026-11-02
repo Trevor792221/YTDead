@@ -1,0 +1,5 @@
+local.youtube.gecko:drawable/zz_media_shuffle = 0x7f0800c0
+local.youtube.gecko:drawable/zz_media_thumb_down = 0x7f0800c1
+local.youtube.gecko:drawable/zz_media_thumb_down_filled = 0x7f0800c2
+local.youtube.gecko:drawable/zz_media_thumb_up = 0x7f0800c3
+local.youtube.gecko:drawable/zz_media_thumb_up_filled = 0x7f0800c4

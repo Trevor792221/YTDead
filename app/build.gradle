@@ -4,6 +4,12 @@ plugins {
 
 android {
     namespace = "local.youtube.gecko"
+
+    // Android Auto caches media-button icons by resource number across app updates, so these
+    // icons keep fixed numbers that no version has used for anything else.
+    androidResources {
+        additionalParameters += ["--stable-ids", file("stable-ids.txt").absolutePath]
+    }
     compileSdk {
         version = release(37) {
             minorApiLevel = 2
@@ -14,7 +20,7 @@ android {
         applicationId = "local.youtube.gecko"
         minSdk = 26
         targetSdk = 36
-        versionCode = 42
+        versionCode = 43
         versionName = "2.28"
     }
 
