@@ -151,3 +151,40 @@ ytmusic-button-renderer:has(a[href^="https://app.music.youtube.com"]) {
   transform: translateY(-50%);
   margin: 0;
 }
+/* Pull to refresh on the home pages (pull-refresh.js). */
+.ytdead-pull {
+  position: fixed;
+  top: -44px;
+  left: 50%;
+  z-index: 2147483647;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #f1f1f1;
+  color: #606060;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 0);
+}
+.ytdead-pull svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+.ytdead-pull-ready {
+  color: #ff0033;
+}
+.ytdead-pull-back {
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+}
+.ytdead-pull-spin svg {
+  animation: ytdead-pull-spin 0.8s linear infinite;
+}
+@keyframes ytdead-pull-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

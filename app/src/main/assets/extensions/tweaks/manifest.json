@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "YouTube app helper",
-  "version": "2.9",
+  "version": "2.10",
   "browser_specific_settings": {
     "gecko": {
       "id": "tweaks@youtube.gecko.local"
@@ -47,7 +47,8 @@
         "settings-button.js",
         "ads-player.js",
         "prefs.js",
-        "page-control.js"
+        "page-control.js",
+        "pull-refresh.js"
       ],
       "run_at": "document_start"
     },
