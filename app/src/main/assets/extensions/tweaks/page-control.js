@@ -27,8 +27,28 @@ if (window.top === window) {
     }
   };
 
+  // --- Recommendations for Android Auto (music-recs.js fetches them) ----------------------
+
+  if (music) {
+    window.addEventListener("ytdead-recs", (e) => {
+      if (typeof e.detail === "string") {
+        browser.runtime.sendMessage({ type: "recs", data: e.detail }).catch(() => {});
+      }
+    });
+    // Refresh the app's list when it's missing or old, once the page has settled.
+    browser.runtime.sendMessage({ type: "recsStale" }).then((stale) => {
+      if (stale === true) {
+        setTimeout(() => window.dispatchEvent(new Event("ytdead-recs-refresh")), 5000);
+      }
+    }).catch(() => {});
+  }
+
   const onMessage = (msg) => {
-    if (msg.type === "pip") {
+    if (msg.type === "refreshRecs") {
+      if (music) {
+        window.dispatchEvent(new Event("ytdead-recs-refresh"));
+      }
+    } else if (msg.type === "pip") {
       document.documentElement.toggleAttribute("data-ytdead-pip", !!msg.on);
     } else if (msg.type === "control" && !!msg.music === music) {
       control(msg.action);

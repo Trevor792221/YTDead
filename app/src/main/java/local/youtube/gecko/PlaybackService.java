@@ -40,6 +40,9 @@ import java.util.Set;
 public class PlaybackService extends MediaBrowserService implements Playback.Listener {
     private static final String BROWSE_ROOT = "root";
     private static final String NOW_PLAYING = "now_playing";
+    private static final String NO_RECS = "no_recs";
+    private static final String SHELF = "shelf:";
+    private static final String ITEM = "item:";
     /** Who may see and control playback: Android Auto, Android's own media controls, the app. */
     private static final Set<String> TRUSTED_CALLERS = new HashSet<>(Arrays.asList(
             "com.google.android.projection.gearhead", // Android Auto
@@ -138,7 +141,11 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
 
             @Override
             public void onPlayFromMediaId(String mediaId, Bundle extras) {
-                Playback.play(); // "Now playing", picked in the car
+                if (mediaId != null && mediaId.startsWith(ITEM)) {
+                    playPick(mediaId); // a recommendation, picked in the car
+                } else if (NOW_PLAYING.equals(mediaId)) {
+                    Playback.play();
+                }
             }
 
             @Override
@@ -225,16 +232,119 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
 
     @Override
     public void onLoadChildren(String parentId, Result<List<MediaBrowser.MediaItem>> result) {
-        List<MediaBrowser.MediaItem> items = new ArrayList<>();
-        if (BROWSE_ROOT.equals(parentId) && Playback.isActive()) {
-            items.add(new MediaBrowser.MediaItem(new MediaDescription.Builder()
-                    .setMediaId(NOW_PLAYING)
-                    .setTitle(Playback.title != null ? Playback.title : getString(R.string.app_name))
-                    .setSubtitle(Playback.artist)
-                    .setIconBitmap(smallArtwork())
-                    .build(), MediaBrowser.MediaItem.FLAG_PLAYABLE));
+        List<Recs.Shelf> shelves = Recs.load(this);
+        if (BROWSE_ROOT.equals(parentId)) {
+            if (Recs.stale(this)) {
+                GeckoApp.get().refreshRecs(); // fresher picks next time the car asks
+            }
+            List<MediaBrowser.MediaItem> items = new ArrayList<>();
+            if (Playback.isActive()) {
+                items.add(new MediaBrowser.MediaItem(new MediaDescription.Builder()
+                        .setMediaId(NOW_PLAYING)
+                        .setTitle(Playback.title != null ? Playback.title : getString(R.string.app_name))
+                        .setSubtitle(Playback.artist)
+                        .setIconBitmap(smallArtwork())
+                        .build(), MediaBrowser.MediaItem.FLAG_PLAYABLE));
+            }
+            for (int i = 0; i < shelves.size(); i++) {
+                items.add(new MediaBrowser.MediaItem(new MediaDescription.Builder()
+                        .setMediaId(SHELF + i)
+                        .setTitle(shelves.get(i).title)
+                        .build(), MediaBrowser.MediaItem.FLAG_BROWSABLE));
+            }
+            if (shelves.isEmpty()) {
+                items.add(new MediaBrowser.MediaItem(new MediaDescription.Builder()
+                        .setMediaId(NO_RECS)
+                        .setTitle("No recommendations yet")
+                        .setSubtitle("Open the Music tab in YTDead on your phone once")
+                        .build(), MediaBrowser.MediaItem.FLAG_PLAYABLE));
+            }
+            result.sendResult(items);
+            return;
         }
-        result.sendResult(items);
+        int shelf = parentId.startsWith(SHELF) ? parseIndex(parentId.substring(SHELF.length())) : -1;
+        if (shelf < 0 || shelf >= shelves.size()) {
+            result.sendResult(new ArrayList<>());
+            return;
+        }
+        // Artwork comes from the web, so the list is sent once it's loaded (off the main thread).
+        List<Recs.Item> picks = shelves.get(shelf).items;
+        result.detach();
+        new Thread(() -> {
+            List<MediaBrowser.MediaItem> items = new ArrayList<>();
+            for (int j = 0; j < picks.size(); j++) {
+                Recs.Item item = picks.get(j);
+                items.add(new MediaBrowser.MediaItem(new MediaDescription.Builder()
+                        .setMediaId(ITEM + shelf + ":" + j)
+                        .setTitle(item.title)
+                        .setSubtitle(item.subtitle)
+                        .setIconBitmap(thumbnail(item.thumb))
+                        .build(), MediaBrowser.MediaItem.FLAG_PLAYABLE));
+            }
+            mMainThread.post(() -> result.sendResult(items));
+        }, "car-artwork").start();
+    }
+
+    private static int parseIndex(String s) {
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private final android.os.Handler mMainThread = new android.os.Handler(android.os.Looper.getMainLooper());
+
+    private static final android.util.LruCache<String, android.graphics.Bitmap> sThumbs =
+            new android.util.LruCache<>(80);
+
+    /** A small picture for the car's list, or null if it can't be had quickly. */
+    private static android.graphics.Bitmap thumbnail(String url) {
+        if (url == null) {
+            return null;
+        }
+        android.graphics.Bitmap cached = sThumbs.get(url);
+        if (cached != null) {
+            return cached;
+        }
+        try {
+            java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+            c.setConnectTimeout(3000);
+            c.setReadTimeout(3000);
+            try (java.io.InputStream in = c.getInputStream()) {
+                android.graphics.Bitmap full = android.graphics.BitmapFactory.decodeStream(in);
+                if (full == null) {
+                    return null;
+                }
+                int size = 120;
+                float scale = Math.min(1f, (float) size / Math.max(full.getWidth(), full.getHeight()));
+                android.graphics.Bitmap small = scale < 1f ? android.graphics.Bitmap.createScaledBitmap(full,
+                        Math.round(full.getWidth() * scale), Math.round(full.getHeight() * scale), true) : full;
+                sThumbs.put(url, small);
+                return small;
+            } finally {
+                c.disconnect();
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Plays a recommendation picked in the car, in the app's Music tab. */
+    private void playPick(String mediaId) {
+        String[] parts = mediaId.substring(ITEM.length()).split(":");
+        List<Recs.Shelf> shelves = Recs.load(this);
+        int shelf = parts.length == 2 ? parseIndex(parts[0]) : -1;
+        int item = parts.length == 2 ? parseIndex(parts[1]) : -1;
+        if (shelf < 0 || shelf >= shelves.size() || item < 0 || item >= shelves.get(shelf).items.size()) {
+            return;
+        }
+        if (!GeckoApp.get().playInMusicTab(shelves.get(shelf).items.get(item).url)) {
+            mSession.setPlaybackState(new PlaybackState.Builder()
+                    .setState(PlaybackState.STATE_ERROR, 0, 0)
+                    .setErrorMessage("Open YTDead on your phone, then pick again.")
+                    .build());
+        }
     }
 
     /** The artwork at list size (a full-size picture could be too big to send to the car). */

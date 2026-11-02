@@ -113,6 +113,7 @@ public class MainActivity extends Activity {
         Playback.addListener(mPipUpdater);
 
         GeckoApp.get().setPlayerPageListener(this::onPlayerPage);
+        GeckoApp.get().setMusicPlayer(this::playInMusicTab);
         // If the app closed right after its last start, start plainly this time: don't reopen
         // what may have caused it.
         // The same right after an update, as an older version may not have noticed its crash.
@@ -396,6 +397,20 @@ public class MainActivity extends Activity {
         updateTabBar();
     }
 
+    /**
+     * Plays a song or playlist picked in Android Auto, in the Music tab, without changing what the
+     * phone shows. A tab that isn't on screen is made active anyway, so it may start playing.
+     */
+    private void playInMusicTab(String url) {
+        GeckoSession session = mSessions[TAB_MUSIC];
+        if (session == null) {
+            session = newSession(true);
+            mSessions[TAB_MUSIC] = session;
+        }
+        session.loadUri(url);
+        session.setActive(true);
+    }
+
     private GeckoSession newSession(boolean music) {
         GeckoSession session = new GeckoSession(new GeckoSessionSettings.Builder()
                 .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
@@ -491,6 +506,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         GeckoApp.get().setPlayerPageListener(null);
+        GeckoApp.get().setMusicPlayer(null);
         unregisterReceiver(mPipReceiver);
         Playback.removeListener(mPipUpdater);
         mView.releaseSession();

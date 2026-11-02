@@ -1,5 +1,6 @@
 // YouTube Music's full-screen player: tells the app when it's open (the app's tab bar stays
-// hidden there), and minimizes it when you swipe down on it, like the YouTube Music app.
+// hidden there), minimizes it when you swipe down on it, and goes to the next / previous song
+// when you swipe left / right on it or on the mini player bar, like the YouTube Music app.
 "use strict";
 
 if (window.top === window) {
@@ -71,19 +72,52 @@ if (window.top === window) {
     }, 250);
   }
 
-  document.addEventListener("touchstart", (e) => {
-    drag = null;
-    if (!isOpen() || e.touches.length !== 1) {
+  // --- Swipe left / right for the next / previous song -------------------------------------
+  // On the full-screen player and on the mini player bar, like the YouTube Music app.
+
+  const SIDE_MIN = 90; // CSS pixels sideways to change song
+
+  function changeSong(next) {
+    const el = document.getElementById("movie_player");
+    const player = el && el.wrappedJSObject;
+    if (!player || typeof player.nextVideo !== "function") {
       return;
     }
-    const target = e.target instanceof Element ? e.target : null;
-    // The artwork, title and controls; not the seek bar or the Up next / Lyrics panel.
-    const panel = target && target.closest("ytmusic-player-page #main-panel");
-    if (!panel || target.closest("tp-yt-paper-slider, #progress-bar, #side-panel, ytmusic-player-queue")) {
+    const video = el.querySelector("video");
+    if (next) {
+      player.nextVideo();
+    } else if (video && video.currentTime > 3) {
+      player.seekTo(0, true); // like the previous button: first back to the start of this song
+    } else {
+      player.previousVideo();
+    }
+  }
+
+  // Where a swipe can start: the full player's artwork, title and controls (not the seek bar or
+  // the Up next / Lyrics panel), or the mini player bar at the bottom.
+  function swipeArea(target) {
+    if (!target || target.closest("tp-yt-paper-slider, #progress-bar, #side-panel, ytmusic-player-queue")) {
+      return null;
+    }
+    if (isOpen()) {
+      const panel = target.closest("ytmusic-player-page #main-panel");
+      return panel ? { el: panel, page: true } : null;
+    }
+    const bar = target.closest("ytmusic-player-bar:not(#top-player-bar)");
+    return bar ? { el: bar, page: false } : null;
+  }
+
+  document.addEventListener("touchstart", (e) => {
+    drag = null;
+    if (e.touches.length !== 1) {
+      return;
+    }
+    const area = swipeArea(e.target instanceof Element ? e.target : null);
+    if (!area) {
       return;
     }
     const t = e.touches[0];
-    drag = { panel, x: t.clientX, y: t.clientY, time: Date.now(), moving: false, dy: 0 };
+    drag = { el: area.el, page: area.page, x: t.clientX, y: t.clientY, time: Date.now(), axis: null, d: 0 };
   }, { capture: true, passive: true });
 
   document.addEventListener("touchmove", (e) => {
@@ -93,28 +127,45 @@ if (window.top === window) {
     const t = e.touches[0];
     const dx = t.clientX - drag.x;
     const dy = t.clientY - drag.y;
-    if (!drag.moving && dy > 10 && dy > Math.abs(dx) * 1.5) {
-      drag.moving = true;
-      drag.panel.style.transition = "none";
+    if (!drag.axis) {
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        drag.axis = "x";
+      } else if (drag.page && dy > 10 && dy > Math.abs(dx) * 1.5) {
+        drag.axis = "y";
+      } else {
+        return;
+      }
+      drag.el.style.transition = "none";
     }
-    if (drag.moving) {
-      drag.dy = Math.max(0, dy);
-      drag.panel.style.transform = `translateY(${drag.dy * 0.6}px)`;
+    if (drag.axis === "x") {
+      drag.d = dx;
+      drag.el.style.transform = `translateX(${dx * 0.5}px)`;
+      drag.el.style.opacity = String(Math.max(0.4, 1 - Math.abs(dx) / 600));
+    } else {
+      drag.d = Math.max(0, dy);
+      drag.el.style.transform = `translateY(${drag.d * 0.6}px)`;
     }
   }, { capture: true, passive: true });
 
   function end(e) {
     const current = drag;
     drag = null;
-    if (current && current.moving) {
-      const { panel, dy, time } = current;
-      if (dy > SWIPE_MIN || (dy > FLICK_MIN && Date.now() - time < FLICK_MS)) {
+    if (current && current.axis) {
+      const { el, axis, d, time } = current;
+      const quick = Date.now() - time < FLICK_MS;
+      if (axis === "y" && (d > SWIPE_MIN || (d > FLICK_MIN && quick))) {
         e.stopImmediatePropagation();
-        minimize(panel);
+        minimize(el);
         return;
       }
-      panel.style.transition = "transform 0.2s ease-out";
-      panel.style.transform = "";
+      el.style.transition = "transform 0.2s ease-out, opacity 0.2s ease-out";
+      el.style.transform = "";
+      el.style.opacity = "";
+      if (axis === "x" && (Math.abs(d) > SIDE_MIN || (Math.abs(d) > FLICK_MIN && quick))) {
+        e.stopImmediatePropagation(); // not a tap on the bar (which would open the player)
+        changeSong(d < 0); // swipe left: next; right: previous
+        return;
+      }
     }
     lastTouchEnd = Date.now();
   }

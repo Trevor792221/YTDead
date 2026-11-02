@@ -113,6 +113,35 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
         mPlayerPageListener = listener;
     }
 
+    /** Plays a YouTube Music page in the Music tab (picked in Android Auto). */
+    interface MusicPlayer {
+        void playInMusicTab(String url);
+    }
+
+    private MusicPlayer mMusicPlayer;
+
+    void setMusicPlayer(MusicPlayer player) {
+        mMusicPlayer = player;
+    }
+
+    /** False if the app isn't open to play it in. */
+    boolean playInMusicTab(String url) {
+        if (mMusicPlayer == null) {
+            return false;
+        }
+        mMusicPlayer.playInMusicTab(url);
+        return true;
+    }
+
+    /** Asks the Music tab's page to fetch the recommendations again. */
+    void refreshRecs() {
+        try {
+            sendToPages(new JSONObject().put("type", "refreshRecs"));
+        } catch (org.json.JSONException ignored) {
+            // Can't happen.
+        }
+    }
+
     /** Tells the pages whether the app is in picture-in-picture (they then show only the video). */
     void setPictureInPicture(boolean on) {
         if (mPictureInPicture != on) {
@@ -280,6 +309,11 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                     Resume.save(GeckoApp.this, msg.optBoolean("music"), msg.optString("url"),
                             msg.optString("videoId"), msg.optDouble("time", 0), msg.optBoolean("ended"));
                     return GeckoResult.fromValue(true);
+                case "recs":
+                    Recs.save(GeckoApp.this, msg.optString("data"));
+                    return GeckoResult.fromValue(true);
+                case "recsStale":
+                    return GeckoResult.fromValue(Recs.stale(GeckoApp.this));
                 case "getResume":
                     return GeckoResult.fromValue(Resume.take(GeckoApp.this, msg.optBoolean("music")));
                 case "webauthn":

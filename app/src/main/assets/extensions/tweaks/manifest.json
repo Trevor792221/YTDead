@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "YouTube app helper",
-  "version": "2.8",
+  "version": "2.9",
   "browser_specific_settings": {
     "gecko": {
       "id": "tweaks@youtube.gecko.local"
@@ -116,6 +116,16 @@
         "likes.js"
       ],
       "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://music.youtube.com/*"
+      ],
+      "js": [
+        "music-recs.js"
+      ],
+      "run_at": "document_idle",
       "world": "MAIN"
     }
   ]

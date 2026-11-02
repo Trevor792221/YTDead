@@ -38,6 +38,13 @@ browser.runtime.onMessage.addListener((msg, sender) => {
       time: Number(msg.time) || 0, ended: !!msg.ended,
     });
   }
+  if (music && sender.frameId === 0 && msg?.type === "recs" && typeof msg.data === "string"
+      && msg.data.length < 300000) {
+    return ask({ type: "recs", data: msg.data });
+  }
+  if (music && sender.frameId === 0 && msg?.type === "recsStale") {
+    return ask({ type: "recsStale" });
+  }
   if (msg?.type === "getResume" && sender.frameId === 0) {
     return ask({ type: "getResume", music });
   }
