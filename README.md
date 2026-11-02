@@ -26,6 +26,9 @@ YouTube app) in GeckoView, Firefox's browser engine for Android.
   Length (3-12 seconds) or off in App settings. Falls back to a plain fade if the second
   player isn't ready or you seek into the last seconds; a song you skip to fades in quickly.
   Seeking back, ads and repeat-one cancel it. App settings shows what it last did.
+- Swipe the album art left / right on the Music tab's player (or the mini player bar) for the
+  next / previous song: the art follows your finger and slides away while the song fades out,
+  then the next song's art slides in as it fades in. Swipe down on the player to minimize it.
 - **App settings** (long-press the app icon → *Extensions & settings*, or the
   *App settings* button on YouTube's *You* page; it also opens on first launch):
   - install, update, turn on/off, remove and configure uBlock Origin, SponsorBlock and

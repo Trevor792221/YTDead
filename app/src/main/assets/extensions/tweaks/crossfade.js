@@ -14,6 +14,9 @@
 // just fades out and the next fades in. A song you skip to fades in quickly. Seeking back,
 // skipping by hand, ads and repeat-one cancel the crossfade. What happened last is shown in App
 // settings.
+//
+// Also does the sound for swiping to the next / previous song (music-player.js): the song
+// fades out while its panel slides away, then the new one fades in.
 (() => {
   "use strict";
   if (window.top !== window) {
@@ -21,19 +24,23 @@
   }
 
   const TICK_MS = 100;
+  const FAST_TICK_MS = 20; // during the short volume ramps (fade-in, swap), so they're smooth
   const PRELOAD = 12; // seconds before the fade starts
   const ADVANCE_AT = 0.3; // move YouTube Music on this long before the end
   const SWAP_MS = 400; // final hand-over from the hidden player
   const HANDOVER_TIMEOUT_MS = 8000;
   const SEEK_LEAD = 0.25; // seeking takes a moment; aim a little ahead
   const SKIP_FADE_IN = 3; // seconds: fade-in for a song you skipped to
+  const SWIPE_OUT_MS = 180; // swiped away: fade-out before changing song (the slide's length)
+  const SWIPE_IN_MS = 300; // ... and fade-in for the new song when crossfade is off
+  const RESTART = "\u0000restart"; // trackId while fading in a song swiped back to its start
 
   // Set by prefs.js from App settings: fade length in seconds, "0" when off.
   const fadeSeconds = () => Number(document.documentElement.getAttribute("data-ytdead-xfade")) || 0;
   // Equal-power curve: the overlap sounds even, without a dip in the middle.
   const curve = (x) => Math.sin((Math.PI / 2) * Math.max(0, Math.min(1, x)));
 
-  let phase = "idle"; // idle | preload | fading | handover | swap | fadein
+  let phase = "idle"; // idle | preload | fading | handover | swap | fadein | swipe
   let trackId = null; // main player's song this crossfade belongs to
   let nextId = null;
   let baseVolume = 1; // the listener's volume, restored afterwards
@@ -42,6 +49,7 @@
   let swapStart = 0;
   let fadeInPlayed = 0;
   let fadeInMs = 0;
+  let fadeInFallback = false; // fading in because the overlap couldn't be done (for the status)
   let reported = null; // last status sent, so each is sent once per song
   let seekTarget = null;
   let lastTick = performance.now();
@@ -175,14 +183,25 @@
     if (!video) {
       return;
     }
+    if (phase === "swipe") {
+      return; // swipeTo() has the volume
+    }
     const fade = fadeSeconds();
-    if (!fade || player.classList.contains("ad-showing")) {
+    const id = (player.getVideoData() || {}).video_id;
+    if (player.classList.contains("ad-showing")) {
       if (phase !== "idle") {
         reset(video);
       }
       return;
     }
-    const id = (player.getVideoData() || {}).video_id;
+    // Off: nothing to do, except finishing a swiped-to song's short fade-in.
+    if (!fade && phase !== "fadein") {
+      if (phase !== "idle") {
+        reset(video);
+      }
+      trackId = id;
+      return;
+    }
 
     switch (phase) {
       case "idle": {
@@ -192,6 +211,7 @@
           video.volume = 0;
           fadeInPlayed = 0;
           fadeInMs = Math.min(fade, SKIP_FADE_IN) * 1000;
+          fadeInFallback = false;
           handoverStart = now;
           phase = "fadein"; // with trackId still the old song, so it starts right away
           return;
@@ -290,6 +310,7 @@
           phase = fv ? "handover" : "fadein";
           fadeInPlayed = 0;
           fadeInMs = fade * 1000;
+          fadeInFallback = true;
           if (phase === "fadein") {
             removeFrame();
           }
@@ -367,7 +388,7 @@
         if (x >= 1) {
           video.volume = baseVolume;
           phase = "idle";
-          if (fadeInMs >= fade * 1000) {
+          if (fadeInFallback) {
             report("Faded into the next song (it wasn't ready to overlap)");
           }
           trackId = id;
@@ -377,5 +398,84 @@
     }
   }
 
-  setInterval(tick, TICK_MS);
+  // --- Swiped to the next / previous song (music-player.js) --------------------------------
+
+  function swipeTo(action) {
+    const player = mainPlayer();
+    if (!player || typeof player.nextVideo !== "function") {
+      return;
+    }
+    const go = () => {
+      if (action === "next") {
+        player.nextVideo();
+      } else if (action === "previous") {
+        player.previousVideo();
+      } else {
+        player.seekTo(0, true);
+      }
+    };
+    const video = player.querySelector("video");
+    if (phase === "swipe") {
+      go(); // swiped again while the last one is fading out
+      return;
+    }
+    if (!video || video.paused || video.muted || phase === "handover" || phase === "swap"
+        || player.classList.contains("ad-showing")) {
+      // Nothing to fade out (or the hidden player is the one playing): just change song; a
+      // skipped-to song still fades in (tick) when crossfade is on.
+      reset(video);
+      go();
+      return;
+    }
+    // Back to the listener's volume afterwards, even if this interrupts a fade.
+    const base = phase === "idle" ? video.volume : baseVolume;
+    const from = video.volume;
+    removeFrame();
+    nextId = null;
+    seekTarget = null;
+    const oldId = (player.getVideoData() || {}).video_id;
+    baseVolume = base;
+    phase = "swipe";
+    const started = performance.now();
+    const step = () => {
+      if (phase !== "swipe") {
+        return;
+      }
+      const x = (performance.now() - started) / SWIPE_OUT_MS;
+      if (x < 1) {
+        video.volume = from * curve(1 - x);
+        setTimeout(step, 16);
+        return;
+      }
+      video.volume = 0;
+      go();
+      // tick fades the new song in once YouTube Music has moved on to it (straight away when
+      // it's this song from the start).
+      const fade = fadeSeconds();
+      trackId = action === "restart" ? RESTART : oldId;
+      fadeInPlayed = 0;
+      fadeInMs = fade ? Math.min(fade, SKIP_FADE_IN) * 1000 : SWIPE_IN_MS;
+      fadeInFallback = false;
+      handoverStart = performance.now();
+      lastTick = handoverStart;
+      phase = "fadein";
+    };
+    step();
+  }
+
+  window.addEventListener("ytdead-skip", (e) => {
+    if (typeof e.detail === "string") {
+      swipeTo(e.detail);
+    }
+  });
+  // Tells music-player.js that swipes can come here.
+  document.documentElement.setAttribute("data-ytdead-skip", "");
+
+  (function loop() {
+    try {
+      tick();
+    } finally {
+      setTimeout(loop, phase === "fadein" || phase === "swap" ? FAST_TICK_MS : TICK_MS);
+    }
+  })();
 })();

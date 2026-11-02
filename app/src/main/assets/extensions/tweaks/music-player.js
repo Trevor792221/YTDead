@@ -73,24 +73,149 @@ if (window.top === window) {
   }
 
   // --- Swipe left / right for the next / previous song -------------------------------------
-  // On the full-screen player and on the mini player bar, like the YouTube Music app.
+  // On the full-screen player and on the mini player bar, like the YouTube Music app. Only the
+  // album art moves: it follows the finger; let go past SIDE_MIN (or flick) and it carries on
+  // off the screen while the song fades out (crossfade.js), then the next song's art slides in
+  // from the other side once YouTube Music has switched to it. Otherwise it springs back. On
+  // the mini player bar the small thumbnail moves a shorter way, so it stays over the bar.
 
   const SIDE_MIN = 90; // CSS pixels sideways to change song
+  const FLING_SPEED = 0.5; // ... or a flick this fast (px/ms), at least FLING_MIN_X along
+  const FLING_MIN_X = 30;
+  const OUT_MS = 180; // slide off the screen (same as the audio fade-out in crossfade.js)
+  const IN_MS = 280; // slide back in with the new song
+  const BACK_MS = 220; // spring back when the swipe isn't far enough
+  const CHANGE_WAIT_MS = 1500; // longest to wait for the new song before sliding back in
+  const EASE_OUT = "cubic-bezier(0.2, 0, 0, 1)";
+  const EASE_IN = "cubic-bezier(0.4, 0, 1, 1)";
 
-  function changeSong(next) {
+  let slide = 0; // the running slide animation; bumped to cancel it
+  let slideEl = null;
+
+  function player() {
     const el = document.getElementById("movie_player");
-    const player = el && el.wrappedJSObject;
-    if (!player || typeof player.nextVideo !== "function") {
+    const p = el && el.wrappedJSObject;
+    return p && typeof p.nextVideo === "function" ? { el, p } : null;
+  }
+
+  function songId() {
+    try {
+      const pl = player();
+      const data = pl && pl.p.getVideoData();
+      return (data && data.video_id) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function currentTime() {
+    const pl = player();
+    const video = pl && pl.el.querySelector("video");
+    return video ? video.currentTime : 0;
+  }
+
+  // Like the previous button: first back to the start of this song.
+  const skipAction = (next) => (next ? "next" : currentTime() > 3 ? "restart" : "previous");
+
+  // crossfade.js (in the page) fades the song out, changes it and fades the new one in. If it
+  // isn't there for some reason, change the song straight away.
+  function changeSong(action) {
+    if (document.documentElement.hasAttribute("data-ytdead-skip")) {
+      window.dispatchEvent(new CustomEvent("ytdead-skip", { detail: action }));
       return;
     }
-    const video = el.querySelector("video");
-    if (next) {
-      player.nextVideo();
-    } else if (video && video.currentTime > 3) {
-      player.seekTo(0, true); // like the previous button: first back to the start of this song
-    } else {
-      player.previousVideo();
+    const pl = player();
+    if (!pl) {
+      return;
     }
+    if (action === "next") {
+      pl.p.nextVideo();
+    } else if (action === "previous") {
+      pl.p.previousVideo();
+    } else {
+      pl.p.seekTo(0, true);
+    }
+  }
+
+  function setStyle(el, transition, transform, opacity) {
+    el.style.transition = transition;
+    el.style.transform = transform;
+    el.style.opacity = opacity;
+  }
+
+  // Stops a slide that's still running and shows its panel where it is.
+  function cancelSlide() {
+    if (slideEl) {
+      slide++;
+      setStyle(slideEl, "none", "", "");
+      slideEl = null;
+    }
+  }
+
+  // Clears the inline transition once an animation is done, so it doesn't apply to anything
+  // YouTube Music changes later.
+  function settle(el, ms, token) {
+    setTimeout(() => {
+      if (token === slide) {
+        el.style.transition = "";
+        if (slideEl === el) {
+          slideEl = null;
+        }
+      }
+    }, ms + 50);
+  }
+
+  function springBack(el) {
+    const token = ++slide;
+    slideEl = el;
+    setStyle(el, `transform ${BACK_MS}ms ${EASE_OUT}, opacity ${BACK_MS}ms ${EASE_OUT}`, "", "");
+    settle(el, BACK_MS, token);
+  }
+
+  // How far the art goes when it slides away: off the screen on the full player; on the mini
+  // player bar, half its own width again.
+  function travel(art, page) {
+    return page ? window.innerWidth : (art.getBoundingClientRect().width || 48) * 1.5;
+  }
+
+  // The album art (or the video, for songs with one) that moves with a sideways swipe.
+  function artFor(area, page) {
+    return page
+      ? area.querySelector("ytmusic-player#player, #player, #song-image")
+      : area.querySelector(".thumbnail-image-wrapper, .image, img");
+  }
+
+  function slideAway(el, page, next) {
+    const token = ++slide;
+    const dir = next ? -1 : 1;
+    const far = el ? travel(el, page) : 0;
+    if (el) {
+      slideEl = el;
+      setStyle(el, `transform ${OUT_MS}ms ${EASE_IN}, opacity ${OUT_MS}ms linear`, `translateX(${dir * far}px)`, "0");
+    }
+
+    const action = skipAction(next);
+    const before = songId();
+    changeSong(action);
+    const started = Date.now();
+    const slideIn = () => {
+      if (token !== slide || !el) {
+        return;
+      }
+      const elapsed = Date.now() - started;
+      const changed = action === "restart" || songId() !== before
+        // "previous" on the first song just starts it again
+        || (action === "previous" && elapsed > 600 && currentTime() < 1);
+      if (!changed && elapsed < CHANGE_WAIT_MS) {
+        setTimeout(slideIn, 40);
+        return;
+      }
+      setStyle(el, "none", `translateX(${-dir * far * 0.3}px)`, "0");
+      el.getBoundingClientRect(); // start the next transition from there
+      setStyle(el, `transform ${IN_MS}ms ${EASE_OUT}, opacity ${IN_MS}ms ease-out`, "", "");
+      settle(el, IN_MS, token);
+    };
+    setTimeout(slideIn, OUT_MS);
   }
 
   // Where a swipe can start: the full player's artwork, title and controls (not the seek bar or
@@ -107,6 +232,31 @@ if (window.top === window) {
     return bar ? { el: bar, page: false } : null;
   }
 
+  // Moves follow the finger once per frame, however many touch events arrive in between.
+  let frame = 0;
+  function render() {
+    frame = 0;
+    if (!drag || !drag.axis) {
+      return;
+    }
+    const el = drag.target;
+    if (!el) {
+      return;
+    }
+    if (drag.axis === "x") {
+      if (drag.page) {
+        el.style.transform = `translateX(${drag.d}px)`;
+        el.style.opacity = String(Math.max(0.5, 1 - Math.abs(drag.d) / (drag.far * 1.2)));
+      } else {
+        const x = Math.max(-drag.far, Math.min(drag.far, drag.d * 0.5));
+        el.style.transform = `translateX(${x}px)`;
+        el.style.opacity = String(1 - 0.6 * Math.abs(x) / drag.far);
+      }
+    } else {
+      el.style.transform = `translateY(${drag.d * 0.6}px)`;
+    }
+  }
+
   document.addEventListener("touchstart", (e) => {
     drag = null;
     if (e.touches.length !== 1) {
@@ -117,7 +267,11 @@ if (window.top === window) {
       return;
     }
     const t = e.touches[0];
-    drag = { el: area.el, page: area.page, x: t.clientX, y: t.clientY, time: Date.now(), axis: null, d: 0 };
+    const now = performance.now();
+    drag = {
+      el: area.el, page: area.page, x: t.clientX, y: t.clientY, time: now, axis: null, d: 0,
+      target: null, far: 0, v: 0, lastX: 0, lastTime: now,
+    };
   }, { capture: true, passive: true });
 
   document.addEventListener("touchmove", (e) => {
@@ -135,36 +289,68 @@ if (window.top === window) {
       } else {
         return;
       }
-      drag.el.style.transition = "none";
+      // Sideways only the art moves; down, the whole player.
+      drag.target = drag.axis === "x" ? artFor(drag.el, drag.page) : drag.el;
+      if (slideEl && (slideEl === drag.target || drag.el.contains(slideEl))) {
+        cancelSlide(); // grabbed again mid-slide: carry on from the finger
+      }
+      if (drag.target) {
+        drag.far = travel(drag.target, drag.page);
+        drag.target.style.transition = "none";
+      }
+      if (drag.axis === "x") {
+        // Measured from where the drag locked on, so the panel doesn't jump.
+        drag.x += Math.sign(dx) * 12;
+      }
     }
+    const now = performance.now();
     if (drag.axis === "x") {
-      drag.d = dx;
-      drag.el.style.transform = `translateX(${dx * 0.5}px)`;
-      drag.el.style.opacity = String(Math.max(0.4, 1 - Math.abs(dx) / 600));
+      drag.d = t.clientX - drag.x;
+      const dt = now - drag.lastTime;
+      if (dt > 0) {
+        const v = (drag.d - drag.lastX) / dt;
+        drag.v = dt > 100 ? v : drag.v * 0.4 + v * 0.6; // recent speed, smoothed
+      }
+      drag.lastX = drag.d;
+      drag.lastTime = now;
     } else {
       drag.d = Math.max(0, dy);
-      drag.el.style.transform = `translateY(${drag.d * 0.6}px)`;
+    }
+    if (!frame) {
+      frame = requestAnimationFrame(render);
     }
   }, { capture: true, passive: true });
 
   function end(e) {
     const current = drag;
     drag = null;
+    if (frame) {
+      cancelAnimationFrame(frame); // a late frame would undo what's set below
+      frame = 0;
+    }
     if (current && current.axis) {
-      const { el, axis, d, time } = current;
-      const quick = Date.now() - time < FLICK_MS;
-      if (axis === "y" && (d > SWIPE_MIN || (d > FLICK_MIN && quick))) {
-        e.stopImmediatePropagation();
-        minimize(el);
-        return;
-      }
-      el.style.transition = "transform 0.2s ease-out, opacity 0.2s ease-out";
-      el.style.transform = "";
-      el.style.opacity = "";
-      if (axis === "x" && (Math.abs(d) > SIDE_MIN || (Math.abs(d) > FLICK_MIN && quick))) {
-        e.stopImmediatePropagation(); // not a tap on the bar (which would open the player)
-        changeSong(d < 0); // swipe left: next; right: previous
-        return;
+      const { el, target, page, axis, d, time } = current;
+      const now = performance.now();
+      if (axis === "y") {
+        const quick = now - time < FLICK_MS;
+        if (d > SWIPE_MIN || (d > FLICK_MIN && quick)) {
+          e.stopImmediatePropagation();
+          minimize(el);
+          return;
+        }
+        springBack(el);
+      } else {
+        // A finger that stopped before lifting isn't a flick.
+        const v = now - current.lastTime > 80 ? 0 : current.v;
+        const fling = Math.abs(v) > FLING_SPEED && Math.sign(v) === Math.sign(d) && Math.abs(d) > FLING_MIN_X;
+        if (Math.abs(d) > SIDE_MIN || fling) {
+          e.stopImmediatePropagation(); // not a tap on the bar (which would open the player)
+          slideAway(target, page, d < 0); // swipe left: next; right: previous
+          return;
+        }
+        if (target) {
+          springBack(target);
+        }
       }
     }
     lastTouchEnd = Date.now();
