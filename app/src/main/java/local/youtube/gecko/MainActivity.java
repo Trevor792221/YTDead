@@ -259,6 +259,7 @@ public class MainActivity extends Activity {
     private float mTouchStartY;
     private boolean mTouchOnBar;
     private boolean mGestureHandled;
+    private boolean mSwallowGesture;
 
     /** YouTube Music's full-screen player is open in that tab: the bar stays out of its way. */
     private final boolean[] mPlayerPageOpen = new boolean[2];
@@ -333,6 +334,7 @@ public class MainActivity extends Activity {
                     mTouchStartX = ev.getRawX();
                     mTouchStartY = ev.getRawY();
                     mGestureHandled = false;
+                    mSwallowGesture = false;
                     int[] at = new int[2];
                     mTabBar.getLocationOnScreen(at);
                     mTouchOnBar = mBarFraction > 0 && ev.getRawY() < at[1] + mTabBar.getHeight();
@@ -343,6 +345,22 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_MOVE:
                     float dy = ev.getRawY() - mTouchStartY;
                     float dx = ev.getRawX() - mTouchStartX;
+                    if (mTouchOnBar && !mGestureHandled && Math.abs(dx) > dp(40) && Math.abs(dx) > Math.abs(dy) * 1.5f) {
+                        // Swiping sideways on the bar: left for the tab to the right (Music),
+                        // right for the one to the left (YouTube). The tab under the finger isn't
+                        // pressed.
+                        mGestureHandled = true;
+                        mSwallowGesture = true;
+                        MotionEvent cancel = MotionEvent.obtain(ev);
+                        cancel.setAction(MotionEvent.ACTION_CANCEL);
+                        super.dispatchTouchEvent(cancel);
+                        cancel.recycle();
+                        int target = dx < 0 ? Math.min(mTab + 1, TAB_MUSIC) : Math.max(mTab - 1, TAB_YOUTUBE);
+                        if (target != mTab) {
+                            open(target, null);
+                            mTabBar.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+                        }
+                    }
                     if (!mTouchOnBar && !mGestureHandled && Math.abs(dy) > dp(24) && Math.abs(dy) > Math.abs(dx)) {
                         mGestureHandled = true;
                         if (dy > 0) {
@@ -361,6 +379,13 @@ public class MainActivity extends Activity {
                 default:
                     break;
             }
+        }
+        if (mSwallowGesture) {
+            // The rest of a swipe that switched tabs goes nowhere (the tabs got a cancel).
+            if (ev.getActionMasked() == MotionEvent.ACTION_UP || ev.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                mSwallowGesture = false;
+            }
+            return true;
         }
         return super.dispatchTouchEvent(ev);
     }
