@@ -12,4 +12,7 @@
     <string name="rewind_10">Back 10 seconds</string>
     <string name="forward_10">Forward 10 seconds</string>
     <string name="close">Close</string>
+    <string name="like">Like</string>
+    <string name="dislike">Dislike</string>
+    <string name="shuffle">Shuffle</string>
 </resources>

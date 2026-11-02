@@ -312,6 +312,9 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                 case "recs":
                     Recs.save(GeckoApp.this, msg.optString("data"));
                     return GeckoResult.fromValue(true);
+                case "rating":
+                    Playback.setMusicRating(msg.optString("status"));
+                    return GeckoResult.fromValue(true);
                 case "recsStale":
                     return GeckoResult.fromValue(Recs.stale(GeckoApp.this));
                 case "getResume":

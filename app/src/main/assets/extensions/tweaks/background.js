@@ -42,6 +42,10 @@ browser.runtime.onMessage.addListener((msg, sender) => {
       && msg.data.length < 300000) {
     return ask({ type: "recs", data: msg.data });
   }
+  if (music && sender.frameId === 0 && msg?.type === "rating"
+      && ["LIKE", "DISLIKE", "INDIFFERENT"].includes(msg.status)) {
+    return ask({ type: "rating", status: msg.status });
+  }
   if (music && sender.frameId === 0 && msg?.type === "recsStale") {
     return ask({ type: "recsStale" });
   }

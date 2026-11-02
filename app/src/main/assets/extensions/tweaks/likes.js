@@ -195,8 +195,16 @@
     return b;
   }
 
+  // The current song's rating, for the app (Android Auto's like / dislike buttons).
+  let reportedRating = null;
+
   function refresh() {
-    const status = ratings.get(currentId()) || "INDIFFERENT";
+    const id = currentId();
+    const status = ratings.get(id) || "INDIFFERENT";
+    if (id && id + status !== reportedRating) {
+      reportedRating = id + status;
+      window.dispatchEvent(new CustomEvent("ytdead-rating", { detail: status }));
+    }
     for (const box of boxes) {
       if (box.dataset.status === status) {
         continue; // already showing it; don't redraw every second
@@ -268,6 +276,13 @@
     placeOnPage(playing);
     refresh();
   }
+
+  // Like / dislike from the app (Android Auto), via page-control.js: like pressing the buttons.
+  window.addEventListener("ytdead-rate", (e) => {
+    if (e.detail === "LIKE" || e.detail === "DISLIKE") {
+      press(e.detail);
+    }
+  });
 
   setInterval(place, 1000);
 })();

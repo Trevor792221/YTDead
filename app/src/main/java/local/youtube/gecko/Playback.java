@@ -58,6 +58,30 @@ final class Playback {
     private Playback() {
     }
 
+    /** The YouTube Music song's rating ("LIKE", "DISLIKE" or "INDIFFERENT"), from likes.js. */
+    static String musicRating = "INDIFFERENT";
+
+    /** Whether what's shown is from the Music tab (it then has like, dislike and shuffle). */
+    static boolean isMusic() {
+        return sSession != null && state(sSession).music;
+    }
+
+    static void setMusicRating(String rating) {
+        if (!rating.equals(musicRating)) {
+            musicRating = rating;
+            for (Listener l : new ArrayList<>(sListeners)) {
+                l.onPlaybackChanged();
+            }
+        }
+    }
+
+    /** Like, dislike or shuffle on YouTube Music, done by the page. */
+    static void musicAction(String action) {
+        if (isMusic()) {
+            GeckoApp.get().controlPage(action, true);
+        }
+    }
+
     static boolean isActive() {
         return sSession != null;
     }

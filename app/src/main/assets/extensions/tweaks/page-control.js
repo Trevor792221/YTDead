@@ -7,6 +7,19 @@ if (window.top === window) {
   const music = location.hostname === "music.youtube.com";
 
   const control = (action) => {
+    if (music && (action === "like" || action === "dislike")) {
+      window.dispatchEvent(new CustomEvent("ytdead-rate", { detail: action.toUpperCase() })); // likes.js
+      return;
+    }
+    if (music && action === "shuffle") {
+      // YouTube Music's own shuffle button (there even while the player screen is closed).
+      const button = document.querySelector("ytmusic-player-page yt-icon-button.shuffle button")
+        || document.querySelector("ytmusic-player-bar yt-icon-button.shuffle button, yt-icon-button.shuffle button");
+      if (button) {
+        button.click();
+      }
+      return;
+    }
     const el = document.getElementById("movie_player");
     const player = el && el.wrappedJSObject;
     if (player && typeof player.playVideo === "function") {
@@ -30,6 +43,11 @@ if (window.top === window) {
   // --- Recommendations for Android Auto (music-recs.js fetches them) ----------------------
 
   if (music) {
+    window.addEventListener("ytdead-rating", (e) => {
+      if (typeof e.detail === "string") {
+        browser.runtime.sendMessage({ type: "rating", status: e.detail }).catch(() => {});
+      }
+    });
     window.addEventListener("ytdead-recs", (e) => {
       if (typeof e.detail === "string") {
         browser.runtime.sendMessage({ type: "recs", data: e.detail }).catch(() => {});

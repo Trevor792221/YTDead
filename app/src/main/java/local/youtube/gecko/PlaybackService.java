@@ -59,6 +59,9 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
     private static final String ACTION_FORWARD = "forward";
     private static final String ACTION_REWIND = "rewind";
     private static final String ACTION_CLOSE = "close";
+    private static final String ACTION_LIKE = "like";
+    private static final String ACTION_DISLIKE = "dislike";
+    private static final String ACTION_SHUFFLE = "shuffle";
     private static final double SKIP_SECONDS = 10;
 
     private MediaSession mSession;
@@ -211,6 +214,11 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
                 break;
             case ACTION_CLOSE:
                 close();
+                break;
+            case ACTION_LIKE:
+            case ACTION_DISLIKE:
+            case ACTION_SHUFFLE:
+                Playback.musicAction(action);
                 break;
             default:
                 break;
@@ -370,7 +378,7 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
         }
         updateSession();
         String key = Playback.title + "|" + Playback.artist + "|" + System.identityHashCode(Playback.artwork)
-                + "|" + Playback.playing + "|" + Playback.features;
+                + "|" + Playback.playing + "|" + Playback.features + "|" + Playback.musicRating;
         if (!key.equals(mShownKey)) {
             mShownKey = key;
             notifyChildrenChanged(BROWSE_ROOT); // the car's "Now playing" entry
@@ -427,6 +435,15 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
             actions |= PlaybackState.ACTION_SKIP_TO_NEXT;
         } else {
             state.addCustomAction(ACTION_FORWARD, getString(R.string.forward_10), R.drawable.ic_forward_10);
+        }
+        if (Playback.isMusic()) {
+            // YouTube Music: like / dislike (filled when chosen) and shuffle, in Android Auto and
+            // (first two) in the phone's media controls, like the YouTube Music app.
+            state.addCustomAction(ACTION_LIKE, getString(R.string.like),
+                    "LIKE".equals(Playback.musicRating) ? R.drawable.ic_thumb_up_filled : R.drawable.ic_thumb_up);
+            state.addCustomAction(ACTION_DISLIKE, getString(R.string.dislike),
+                    "DISLIKE".equals(Playback.musicRating) ? R.drawable.ic_thumb_down_filled : R.drawable.ic_thumb_down);
+            state.addCustomAction(ACTION_SHUFFLE, getString(R.string.shuffle), R.drawable.ic_shuffle);
         }
         state.addCustomAction(ACTION_CLOSE, getString(R.string.close), R.drawable.ic_close);
         state.setActions(actions);
