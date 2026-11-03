@@ -141,7 +141,8 @@ if (window.top === window) {
   }, true);
   window.addEventListener("pagehide", () => save(false));
 
-  // Opened by the app to resume: once the saved video has loaded, go to the saved spot and pause.
+  // Opened by the app to resume: once the saved video has loaded, go to the saved spot and pause
+  // (or, when Android Auto started it, play).
   browser.runtime.sendMessage({ type: "getResume" }).then((saved) => {
     if (!saved || !saved.videoId || !(saved.time > 0)) {
       return;
@@ -154,7 +155,11 @@ if (window.top === window) {
       } else if (now && now.id === saved.videoId && Number.isFinite(now.video.duration)) {
         clearInterval(timer);
         now.player.seekTo(saved.time, true);
-        now.player.pauseVideo();
+        if (saved.play) {
+          now.player.playVideo(); // started from Android Auto: carry on playing
+        } else {
+          now.player.pauseVideo();
+        }
       }
     }, 300);
   }).catch(() => {});

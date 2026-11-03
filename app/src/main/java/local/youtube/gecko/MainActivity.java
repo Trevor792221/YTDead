@@ -392,6 +392,9 @@ public class MainActivity extends Activity {
 
     /** Shows a tab, creating its page on first use, and loads url in it if given. */
     private void open(int tab, String url) {
+        if (tab == TAB_MUSIC) {
+            adoptCarSession(); // what Android Auto started carries on, without reloading
+        }
         GeckoSession session = mSessions[tab];
         if (session == null) {
             if (url == null) {
@@ -427,13 +430,37 @@ public class MainActivity extends Activity {
      * phone shows. A tab that isn't on screen is made active anyway, so it may start playing.
      */
     private void playInMusicTab(String url) {
-        GeckoSession session = mSessions[TAB_MUSIC];
+        GeckoSession session = adoptCarSession();
+        if (session == null) {
+            session = mSessions[TAB_MUSIC];
+        }
         if (session == null) {
             session = newSession(true);
             mSessions[TAB_MUSIC] = session;
         }
         session.loadUri(url);
         session.setActive(true);
+    }
+
+    /**
+     * The Music page Android Auto started while the app was closed (GeckoApp) becomes the Music
+     * tab, so what's playing carries on. Null if there's none, or the tab already has a page.
+     */
+    private GeckoSession adoptCarSession() {
+        if (mSessions[TAB_MUSIC] != null) {
+            return null;
+        }
+        GeckoSession session = GeckoApp.get().takeCarSession();
+        if (session == null) {
+            return null;
+        }
+        session.setContentDelegate(new Content());
+        session.setNavigationDelegate(new Navigation());
+        session.setPermissionDelegate(new Permissions());
+        session.setPromptDelegate(new Prompts(this));
+        session.setMediaSessionDelegate(Playback.delegate(this::onMediaPlay, true));
+        mSessions[TAB_MUSIC] = session;
+        return session;
     }
 
     private GeckoSession newSession(boolean music) {
@@ -902,7 +929,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static class Permissions implements PermissionDelegate {
+    /** Allows autoplay and the like; also used for the Music page Android Auto starts (GeckoApp). */
+    static class Permissions implements PermissionDelegate {
         @Override
         public GeckoResult<Integer> onContentPermissionRequest(GeckoSession session, ContentPermission perm) {
             if (perm.permission == PERMISSION_AUTOPLAY_AUDIBLE

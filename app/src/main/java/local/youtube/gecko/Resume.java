@@ -23,6 +23,8 @@ final class Resume {
 
     /** Set at app start for each tab with a saved spot; the page asks for it once. */
     private static final boolean[] sPending = new boolean[2];
+    /** Started from Android Auto: carry on playing from the saved spot instead of pausing there. */
+    private static boolean sPlayMusic;
 
     private Resume() {
     }
@@ -76,6 +78,24 @@ final class Resume {
         return sPending[tab] ? prefs(context).getString(KEY_URL + tab, null) : null;
     }
 
+    /** The saved page for a tab, or null. */
+    static String savedUrl(Context context, int tab) {
+        return prefs(context).getString(KEY_URL + tab, null);
+    }
+
+    /**
+     * For Android Auto: the Music tab's saved song, to open and play from where it was. Null if
+     * there's none.
+     */
+    static String startMusicFromCar(Context context) {
+        String url = prefs(context).getString(KEY_URL + MUSIC, null);
+        if (url != null) {
+            sPending[MUSIC] = true;
+            sPlayMusic = true;
+        }
+        return url;
+    }
+
     /** The tab you were last watching or listening in. */
     static int lastTab(Context context) {
         return prefs(context).getInt(KEY_LAST_TAB, YOUTUBE) == MUSIC ? MUSIC : YOUTUBE;
@@ -91,11 +111,14 @@ final class Resume {
             return "";
         }
         sPending[tab] = false;
+        boolean play = music && sPlayMusic;
+        sPlayMusic = false;
         SharedPreferences p = prefs(context);
         try {
             return new JSONObject()
                     .put("videoId", p.getString(KEY_VIDEO + tab, ""))
                     .put("time", (double) p.getFloat(KEY_TIME + tab, 0))
+                    .put("play", play)
                     .toString();
         } catch (JSONException e) {
             return "";

@@ -104,7 +104,11 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
         mSession.setCallback(new MediaSession.Callback() {
             @Override
             public void onPlay() {
-                Playback.play();
+                if (Playback.isActive()) {
+                    Playback.play();
+                } else {
+                    startFromCar(); // e.g. Android Auto starting music when the phone connects
+                }
             }
 
             @Override
@@ -165,6 +169,11 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
                     .setState(PlaybackState.STATE_ERROR, 0, 0)
                     .setErrorMessage("Start a video or song in YTDead on your phone.")
                     .build());
+            if (startPick() != null) {
+                // Something to start: show it as ready to play, so Android Auto (and its
+                // "start music automatically" setting) can start it without the phone.
+                showReadyToPlay();
+            }
         }
 
         mAudio = getSystemService(AudioManager.class);
@@ -338,6 +347,48 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
         }
     }
 
+    /** What play starts with nothing playing: the last Music song, else the first recommendation. */
+    private String startPick() {
+        String saved = Resume.savedUrl(this, Resume.MUSIC);
+        if (saved != null) {
+            return saved;
+        }
+        List<Recs.Shelf> shelves = Recs.load(this);
+        return shelves.isEmpty() ? null : shelves.get(0).items.get(0).url;
+    }
+
+    private void showReadyToPlay() {
+        mSession.setMetadata(new MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, getString(R.string.app_name))
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, "Press play to start YouTube Music")
+                .build());
+        mSession.setPlaybackState(new PlaybackState.Builder()
+                .setState(PlaybackState.STATE_PAUSED, 0, 0)
+                .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PLAY_PAUSE
+                        | PlaybackState.ACTION_PLAY_FROM_MEDIA_ID)
+                .build());
+    }
+
+    /**
+     * Play with nothing playing (Android Auto, often right as the phone connects): the Music tab's
+     * last song from where it was, else the first recommendation, without opening the app.
+     */
+    private void startFromCar() {
+        String url = Resume.startMusicFromCar(this);
+        if (url == null) {
+            url = startPick();
+        }
+        if (url == null) {
+            mSession.setPlaybackState(new PlaybackState.Builder()
+                    .setState(PlaybackState.STATE_ERROR, 0, 0)
+                    .setErrorMessage("Start a video or song in YTDead on your phone.")
+                    .build());
+            return;
+        }
+        start(this); // the notification, while Android allows it (just after a car command)
+        GeckoApp.get().playInMusicTab(url);
+    }
+
     /** Plays a recommendation picked in the car, in the app's Music tab. */
     private void playPick(String mediaId) {
         String[] parts = mediaId.substring(ITEM.length()).split(":");
@@ -347,12 +398,8 @@ public class PlaybackService extends MediaBrowserService implements Playback.Lis
         if (shelf < 0 || shelf >= shelves.size() || item < 0 || item >= shelves.get(shelf).items.size()) {
             return;
         }
-        if (!GeckoApp.get().playInMusicTab(shelves.get(shelf).items.get(item).url)) {
-            mSession.setPlaybackState(new PlaybackState.Builder()
-                    .setState(PlaybackState.STATE_ERROR, 0, 0)
-                    .setErrorMessage("Open YTDead on your phone, then pick again.")
-                    .build());
-        }
+        start(this); // the notification, while Android allows it (just after a car command)
+        GeckoApp.get().playInMusicTab(shelves.get(shelf).items.get(item).url);
     }
 
     /** The artwork at list size (a full-size picture could be too big to send to the car). */

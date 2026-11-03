@@ -124,13 +124,57 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
         mMusicPlayer = player;
     }
 
-    /** False if the app isn't open to play it in. */
-    boolean playInMusicTab(String url) {
-        if (mMusicPlayer == null) {
-            return false;
+    /** A Music page started by Android Auto while the app's screen isn't open, or null. */
+    private org.mozilla.geckoview.GeckoSession mCarSession;
+
+    /**
+     * Plays a YouTube Music page in the Music tab; if the app's screen isn't open (Android Auto
+     * started it), in a Music page of its own, without a screen, which the Music tab takes over
+     * when the app is opened.
+     */
+    void playInMusicTab(String url) {
+        if (mMusicPlayer != null) {
+            mMusicPlayer.playInMusicTab(url);
+            return;
         }
-        mMusicPlayer.playInMusicTab(url);
-        return true;
+        if (mCarSession == null) {
+            org.mozilla.geckoview.GeckoSession session = new org.mozilla.geckoview.GeckoSession(
+                    new org.mozilla.geckoview.GeckoSessionSettings.Builder()
+                            .userAgentMode(org.mozilla.geckoview.GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
+                            .viewportMode(org.mozilla.geckoview.GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
+                            .build());
+            session.setPermissionDelegate(new MainActivity.Permissions());
+            session.setMediaSessionDelegate(Playback.delegate(() -> PlaybackService.start(this), true));
+            session.setContentDelegate(new org.mozilla.geckoview.GeckoSession.ContentDelegate() {
+                @Override
+                public void onCrash(org.mozilla.geckoview.GeckoSession s) {
+                    dropCarSession(s);
+                }
+
+                @Override
+                public void onKill(org.mozilla.geckoview.GeckoSession s) {
+                    dropCarSession(s);
+                }
+            });
+            session.open(runtime());
+            mCarSession = session;
+        }
+        mCarSession.loadUri(url);
+        mCarSession.setActive(true);
+    }
+
+    private void dropCarSession(org.mozilla.geckoview.GeckoSession session) {
+        if (mCarSession == session) {
+            mCarSession = null;
+            session.close();
+        }
+    }
+
+    /** For the Music tab when the app opens: the page Android Auto started, now the tab's. */
+    org.mozilla.geckoview.GeckoSession takeCarSession() {
+        org.mozilla.geckoview.GeckoSession session = mCarSession;
+        mCarSession = null;
+        return session;
     }
 
     /** Asks the Music tab's page to fetch the recommendations again. */
