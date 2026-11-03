@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "YouTube app helper",
-  "version": "2.11",
+  "version": "2.12",
   "browser_specific_settings": {
     "gecko": {
       "id": "tweaks@youtube.gecko.local"
@@ -127,6 +127,19 @@
         "music-recs.js"
       ],
       "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://m.youtube.com/*",
+        "*://www.youtube.com/*",
+        "*://youtube.com/*",
+        "*://music.youtube.com/*"
+      ],
+      "js": [
+        "fade-pause.js"
+      ],
+      "run_at": "document_start",
       "world": "MAIN"
     }
   ]

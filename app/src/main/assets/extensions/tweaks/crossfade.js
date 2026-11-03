@@ -475,6 +475,8 @@
     try {
       tick();
     } finally {
+      // Tells fade-pause.js to leave the volume alone while a crossfade or skip is under way.
+      document.documentElement.toggleAttribute("data-ytdead-xfade-busy", phase !== "idle");
       setTimeout(loop, phase === "fadein" || phase === "swap" ? FAST_TICK_MS : TICK_MS);
     }
   })();
