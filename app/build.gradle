@@ -20,8 +20,8 @@ android {
         applicationId = "local.youtube.gecko"
         minSdk = 26
         targetSdk = 36
-        versionCode = 43
-        versionName = "2.28"
+        versionCode = 44
+        versionName = "2.29"
     }
 
     // The release key is never committed. It comes from keystore.properties (local builds)
