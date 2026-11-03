@@ -20,7 +20,6 @@ import android.widget.TextView;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Open-source licenses: the components built into the app, with their licenses and sources.
@@ -170,7 +169,13 @@ public class LicensesActivity extends Activity {
     private void showLicense(LinearLayout list, String file) {
         String text;
         try (InputStream in = getAssets().open("licenses/" + file)) {
-            text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            // (InputStream.readAllBytes needs Android 13; read it in chunks.)
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            for (int n; (n = in.read(buffer)) > 0; ) {
+                bytes.write(buffer, 0, n);
+            }
+            text = bytes.toString("UTF-8");
         } catch (IOException e) {
             finish();
             return;

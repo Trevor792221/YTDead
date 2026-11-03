@@ -75,6 +75,11 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mTv = Device.isTv(this);
+        CrashLog.started(this);
+        if (savedInstanceState == null && CrashLog.read(this) != null) {
+            // After a crash: what happened, to send to the developer (in a process of its own).
+            startActivity(new Intent(this, CrashReportActivity.class));
+        }
 
         mRoot = new LinearLayout(this);
         mRoot.setOrientation(LinearLayout.VERTICAL);

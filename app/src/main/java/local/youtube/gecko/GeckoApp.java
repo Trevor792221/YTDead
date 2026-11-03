@@ -3,6 +3,7 @@ package local.youtube.gecko;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -42,6 +43,10 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
     public void onCreate() {
         super.onCreate();
         sInstance = this;
+        CrashLog.install(this);
+        if (Build.VERSION.SDK_INT >= 28 && getPackageName().equals(Application.getProcessName())) {
+            CrashLog.started(this); // the app's own process (not GeckoView's page processes)
+        }
         registerActivityLifecycleCallbacks(this);
     }
 
@@ -69,6 +74,7 @@ public class GeckoApp extends Application implements Application.ActivityLifecyc
                     .loginAutofillEnabled(true)
                     .consoleOutput(false)
                     .lowMemoryDetection(true)
+                    .crashHandler(CrashHandlerService.class)
                     .build();
             mRuntime = GeckoRuntime.create(this, settings);
             setUpExtensions(mRuntime.getWebExtensionController());
